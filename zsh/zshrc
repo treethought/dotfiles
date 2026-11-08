@@ -113,6 +113,10 @@ alias r="ranger"
 
 alias dockernuke='docker ps -aq | xargs -r docker rm -f; docker system prune -af --volumes'
 
+alias pt="polytoken"
+alias ptn="polytoken new"
+alias ptc="polytoken continue"
+
 eval "$(zoxide init zsh)"
 eval "$(starship init zsh)"
 # source <(fzf --zsh)
@@ -123,7 +127,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 # bun completions
-[ -s "/Users/treethought/.bun/_bun" ] && source "/Users/treethought/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
@@ -131,4 +135,16 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
 
-export PATH="$PATH:/Applications/Ghostty.app/Contents/MacOS"
+export DOTFILES="${DOTFILES:-$HOME/dotfiles}"
+
+if [[ -r "$DOTFILES/zsh/paths.zsh" ]]; then
+	source "$DOTFILES/zsh/paths.zsh"
+fi
+
+if [[ -r "$DOTFILES/zsh/paths.zsh.private" ]]; then
+	source "$DOTFILES/zsh/paths.zsh.private"
+fi
+
+if [[ -r "$DOTFILES/private/secrets.zsh" ]]; then
+	source "$DOTFILES/private/secrets.zsh"
+fi

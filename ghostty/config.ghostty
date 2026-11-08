@@ -1,0 +1,43 @@
+font-family = Menlo Nerd Font
+font-family-bold = CommitMono Nerd Font
+font-family-italic = CommitMono Nerd Font
+font-family-bold-italic = CommitMono Nerd Font
+font-size = 14
+
+confirm-close-surface = false
+clipboard-read = allow
+clipboard-write = allow
+mouse-hide-while-typing = true
+window-padding-x = 6
+window-padding-balance = true
+window-save-state = always
+window-width = 85
+window-height = 30
+font-thicken = true
+font-thicken-strength = 70
+
+background = #15191f
+foreground = #dcdcdc
+
+selection-background = #3a414c
+selection-foreground = #ffffff
+
+palette = 0=#14191e
+palette = 1=#b43c2a
+palette = 2=#00c200
+palette = 3=#c7c400
+palette = 4=#2744c7
+palette = 5=#c040be
+palette = 6=#00c5c7
+palette = 7=#c7c7c7
+palette = 8=#686868
+palette = 9=#dd7975
+palette = 10=#58e790
+palette = 11=#ece100
+palette = 12=#a7abf2
+palette = 13=#e17ee1
+palette = 14=#60fdff
+palette = 15=#ffffff
+
+auto-update-channel = stable
+click-repeat-interval = 500

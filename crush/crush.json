@@ -1,0 +1,450 @@
+{
+  "$schema": "https://charm.land/crush.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "command": "$HOME/.config/crush/hooks/deny-dangerous.sh",
+        "matcher": "^bash$",
+        "name": "deny-dangerous"
+      }
+    ]
+  },
+  "mcp": {
+    "chrome-devtools": {
+      "args": [
+        "chrome-devtools-mcp@1.5.0"
+      ],
+      "command": "npx",
+      "disabled": true,
+      "type": "stdio"
+    },
+    "notion": {
+      "args": [
+        "-y",
+        "@notionhq/notion-mcp-server"
+      ],
+      "command": "npx",
+      "disabled": true,
+      "env": {
+        "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer ${NOTION_API_KEY}\", \"Notion-Version\": \"2022-06-28\"}"
+      },
+      "type": "stdio"
+    },
+    "warpstream": {
+      "oauth": true,
+      "oauth_client_id": "warpstream-mcp",
+      "type": "http",
+      "url": "https://warpstream-mcp.noclues.net/mcp"
+    }
+  },
+  "models": {
+    "large": {
+      "model": "glm-5.3:api",
+      "provider": "agw-glm"
+    },
+    "small": {
+      "model": "claude-haiku-4-5:api",
+      "provider": "agw"
+    }
+  },
+  "options": {
+    "context_paths": [
+      "/Users/treethought/.claude/CLAUDE.md",
+      "CLAUDE.md",
+      "CLAUDE.local.md"
+    ]
+  },
+  "permissions": {
+    "allowed_tools": [
+      "view",
+      "ls",
+      "grep",
+      "glob",
+      "sourcegraph",
+      "fetch",
+      "agent",
+      "edit",
+      "multiedit",
+      "write",
+      "mcp_warpstream_billing_chargebacks_get_past",
+      "mcp_warpstream_billing_chargebacks_get_pending",
+      "mcp_warpstream_billing_invoices_get_invoice_breakdowns",
+      "mcp_warpstream_billing_invoices_get_past_invoice",
+      "mcp_warpstream_billing_invoices_get_pending_invoice",
+      "mcp_warpstream_billing_invoices_list",
+      "mcp_warpstream_describe_client_metrics_subscription",
+      "mcp_warpstream_describe_cluster_metrics",
+      "mcp_warpstream_describe_events",
+      "mcp_warpstream_describe_pipeline",
+      "mcp_warpstream_describe_topic",
+      "mcp_warpstream_describe_virtual_cluster",
+      "mcp_warpstream_describe_virtual_cluster_configuration",
+      "mcp_warpstream_describe_virtual_cluster_tags",
+      "mcp_warpstream_diagnostics_status",
+      "mcp_warpstream_events_query",
+      "mcp_warpstream_get_agent_pool_details",
+      "mcp_warpstream_get_events_state",
+      "mcp_warpstream_get_virtual_cluster_size_hint",
+      "mcp_warpstream_list_agent_pools",
+      "mcp_warpstream_list_client_metrics_subscriptions",
+      "mcp_warpstream_list_pipelines",
+      "mcp_warpstream_list_topics",
+      "mcp_warpstream_list_virtual_cluster_credentials",
+      "mcp_warpstream_list_virtual_clusters",
+      "mcp_warpstream_monitoring_describe_all_consumer_groups",
+      "mcp_warpstream_monitoring_describe_quotas",
+      "mcp_warpstream_virtual_clusters_acls_list",
+      "bash"
+    ]
+  },
+  "providers": {
+    "agw": {
+      "api_key": "${AGW_API_KEY:?set AGW_API_KEY}",
+      "base_url": "https://agw.noclues.net/",
+      "models": [
+        {
+          "context_window": 400000,
+          "id": "claude-opus-5-5:api",
+          "name": "Claude Opus 5.5 (1m)"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-opus-5:api",
+          "name": "Claude Opus 5 (1m)"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-opus-4-8:api",
+          "name": "Claude Opus 4.8 (1m)"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-sonnet-5:api",
+          "name": "Claude Sonnet 5 (1m)"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-fable-5:api",
+          "name": "Claude Fable 5 (1m)"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-fable-5-1:api",
+          "name": "Claude Fable 5.1 (1m)"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-sonnet-4-6:api",
+          "name": "Claude Sonnet 4.6 (1m)"
+        },
+        {
+          "id": "claude-haiku-4-5:api",
+          "name": "Claude Haiku 4.5"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-haiku-5-5:api",
+          "name": "Claude Haiku 5.5 (1m)"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-sonnet-5-5:api",
+          "name": "Claude Sonnet 5.5 (1m)"
+        }
+      ],
+      "type": "anthropic"
+    },
+    "agw-deepseek": {
+      "api_key": "${AGW_API_KEY:?set AGW_API_KEY}",
+      "base_url": "https://agw.noclues.net/v1",
+      "models": [
+        {
+          "id": "deepseek-v4-pro-0813:api",
+          "name": "DeepSeek V4 Pro"
+        },
+        {
+          "id": "deepseek-v4-flash-0731:api",
+          "name": "DeepSeek V4 Flash"
+        },
+        {
+          "id": "deepseek-v4.1-flash:api",
+          "name": "DeepSeek V4.1 Flash"
+        }
+      ],
+      "type": "openai-compat"
+    },
+    "agw-fireworks": {
+      "api_key": "${AGW_API_KEY:?set AGW_API_KEY}",
+      "base_url": "https://agw.noclues.net/v1",
+      "models": [
+        {
+          "context_window": 400000,
+          "id": "ember-1:api",
+          "name": "Ember 1"
+        }
+      ],
+      "type": "openai-compat"
+    },
+    "agw-glm": {
+      "api_key": "${AGW_API_KEY:?set AGW_API_KEY}",
+      "base_url": "https://agw.noclues.net/v1",
+      "models": [
+        {
+          "id": "glm-5.3:api",
+          "name": "GLM-5.3",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "id": "glm-5.3-flash:api",
+          "name": "GLM-5.3 Flash",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "id": "glm-5.2:api",
+          "name": "GLM-5.2",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        }
+      ],
+      "type": "openai-compat"
+    },
+    "agw-kimi": {
+      "api_key": "${AGW_API_KEY:?set AGW_API_KEY}",
+      "base_url": "https://agw.noclues.net/v1",
+      "models": [
+        {
+          "id": "kimi-k3:api",
+          "name": "Kimi K3"
+        }
+      ],
+      "type": "openai-compat"
+    },
+    "agw-openai": {
+      "api_key": "${AGW_API_KEY:?set AGW_API_KEY}",
+      "base_url": "https://agw.noclues.net/v1",
+      "extra_body": {
+        "reasoning_effort": "none"
+      },
+      "models": [
+        {
+          "context_window": 400000,
+          "id": "gpt-6-astra:api",
+          "name": "GPT-6 Astra",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-6-sol:api",
+          "name": "GPT-6 Sol",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-6.1-sol:api",
+          "name": "GPT-6.1 Sol",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-6-luna:api",
+          "name": "GPT-6 Luna",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-5.6-luna:api",
+          "name": "GPT-5.6 Luna",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-5.6-sol:api",
+          "name": "GPT-5.6 Sol",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-5.6-terra:api",
+          "name": "GPT-5.6 Terra",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-5.4:api",
+          "name": "GPT-5.4",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-5.4-mini:api",
+          "name": "GPT-5.4 Mini",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-oss-120b:api",
+          "name": "GPT-OSS 120B",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 400000,
+          "id": "gpt-6.1-terra:api",
+          "name": "GPT-6.1 Terra",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "id": "gemini-4-argon:api",
+          "name": "Gemini 4 Argon"
+        },
+        {
+          "context_window": 400000,
+          "id": "claude-sonnet-5-5:api",
+          "name": "Claude Sonnet 5.5 (1m)"
+        }
+      ],
+      "type": "openai-compat"
+    },
+    "anthropic": {
+      "api_key": "${ANTHROPIC_API_KEY_PERSONAL:?set ANTHROPIC_API_KEY_PERSONAL}",
+      "models": [
+        {
+          "context_window": 400000,
+          "default_max_tokens": 65535,
+          "id": "claude-opus-4-8",
+          "name": "Claude Opus 4.8"
+        },
+        {
+          "context_window": 400000,
+          "default_max_tokens": 65535,
+          "id": "claude-sonnet-4-6",
+          "name": "Claude Sonnet 4.6"
+        },
+        {
+          "context_window": 400000,
+          "default_max_tokens": 65535,
+          "id": "claude-haiku-4-5",
+          "name": "Claude Haiku 4.5"
+        }
+      ],
+      "type": "anthropic"
+    },
+    "bedrock": {
+      "disable": true
+    },
+    "bedrock-europe": {
+      "disable": true
+    },
+    "openai": {
+      "api_key": "${OPENAI_API_KEY_PERSONAL:?set OPENAI_API_KEY_PERSONAL}",
+      "base_url": "https://api.openai.com/v1",
+      "models": [
+        {
+          "context_window": 400000,
+          "default_max_tokens": 65535,
+          "id": "gpt-5.4",
+          "name": "GPT-5.4"
+        },
+        {
+          "context_window": 400000,
+          "default_max_tokens": 65535,
+          "id": "gpt-5.4-mini",
+          "name": "GPT-5.4 Mini"
+        }
+      ],
+      "type": "openai"
+    },
+    "personal-anthropic": {
+      "api_key": "${ANTHROPIC_API_KEY_PERSONAL:?set ANTHROPIC_API_KEY}",
+      "models": [
+        {
+          "id": "claude-opus-5",
+          "name": "Claude Opus 5"
+        },
+        {
+          "id": "claude-opus-4-8",
+          "name": "Claude Opus 4.8"
+        },
+        {
+          "id": "claude-fable-5",
+          "name": "Claude Fable 5"
+        },
+        {
+          "id": "claude-opus-4-1-20250805",
+          "name": "Claude Opus 4.1"
+        },
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4"
+        },
+        {
+          "id": "claude-3-5-haiku-20241022",
+          "name": "Claude 3.5 Haiku"
+        }
+      ],
+      "type": "anthropic"
+    },
+    "personal-deepseek": {
+      "api_key": "${DEEPSEEK_API_KEY_PERSONAL}",
+      "base_url": "https://api.deepseek.com/v1",
+      "models": [
+        {
+          "context_window": 1000000,
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 1000000,
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        },
+        {
+          "context_window": 1000000,
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash",
+          "reasoning": {
+            "thinking": "toggleable"
+          }
+        }
+      ],
+      "type": "openai-compat"
+    }
+  },
+  "skills": {
+    "paths": [
+      "$HOME/.agents/skills"
+    ]
+  }
+}

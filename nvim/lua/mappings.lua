@@ -43,22 +43,24 @@ map("n", "]e", function()
   vim.diagnostic.goto_next { float = { border = "rounded" } }
 end, { desc = "Goto next diagnostic" })
 
--- telescope
--- map("n", "<leader>ff", "<cmd> Telescope find_files <CR>", { desc = "Find files" })
-map("n", "<leader>ff", function()
-  require("telescope.builtin").find_files()
-  -- find_command = { "rg", "--no-ignore", "--files" },
-end, { desc = "Find files" })
-
-map("n", "<leader>sp", "<cmd> Telescope live_grep <CR>", { desc = "Live grep" })
-map("n", "<leader><C-p>", "<cmd> Telescope commands <CR>", { desc = "Telescope commands" })
+-- snacks picker
+map("n", "<leader>ll", function() Snacks.picker() end, { desc = "Find files" })
+map("n", "<leader>ff", function() Snacks.picker.files() end, { desc = "Find files" })
+map("n", "<leader>sp", function() Snacks.picker.grep() end, { desc = "Live grep" })
+map("n", "<leader><C-p>", function() Snacks.picker.commands() end, { desc = "Commands" })
 
 --- obsidian
 
 map("n", "<leader>ww", "<cmd> ObsidianToday<CR>", { desc = "Obsidian Open daily note" })
-map("n", "<leader><C-o>", "<cmd> ObsidianQuickSwitch<CR>", { desc = "Obsidian Quick switch" })
-map("n", "<leader>of", "<cmd> ObsidianSearch<CR>", { desc = "Obsidian search" })
 map("n", "<leader>oa", "<cmd> ObsidianOpen<CR>", { desc = "Obsidian open in app" })
+
+map("n", "<leader><C-o>", function()
+  Snacks.picker.files { cwd = vim.fn.expand "~/garden", ft = "md" }
+end, { desc = "Obsidian quick switch" })
+
+map("n", "<leader>of", function()
+  Snacks.picker.grep { cwd = vim.fn.expand "~/garden" }
+end, { desc = "Obsidian search" })
 
 -- map("n", "<leader>ww", function()
 --   require("functions").open_daily_note_float()

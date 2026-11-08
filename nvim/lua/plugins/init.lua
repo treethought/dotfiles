@@ -94,6 +94,25 @@ return {
     opts = overrides.telescope,
   },
 
+  {
+    "folke/snacks.nvim",
+    priority = 1000,
+    lazy = false,
+    opts = {
+      picker = {
+        enabled = true,
+        layout = {
+          reverse = true,
+        },
+        win = {
+          list = {
+            wo = { winhighlight = "CursorLine:Visual,Normal:Normal" },
+          },
+        },
+      },
+    },
+  },
+
   -- Install a plugin
   -- {
   --   "max397574/better-escape.nvim",
@@ -269,7 +288,7 @@ return {
       daily_notes = {
         folder = "journal",
         date_format = "%Y-%m-%d",
-        template = "templates/daily_note_simple",
+        template = "daily_note_simple",
       },
       follow_url_func = function(url)
         -- Open the URL in the default web browser.

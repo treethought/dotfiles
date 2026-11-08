@@ -1,0 +1,495 @@
+version: 3
+defaults:
+  full: agw/gpt-5.6-sol:api(high)
+  mini: agw/deepseek-v4.1-flash:api(high)
+modelgroups:
+  "polytoken:orchestrate_facet": personal-deepseek/deepseek-flash(high)
+providers:
+  anthropic:
+    kind:
+      type: catalog
+      name: anthropic
+    url: https://api.anthropic.com
+    auth:
+      type: static_key
+      key: ${ANTHROPIC_API_KEY_PERSONAL}
+    cache_control_strategy: anthropic_breakpoints
+  personal-deepseek:
+    kind:
+      type: catalog
+      name: deepseek
+    auth:
+      type: static_key
+      key: ${DEEPSEEK_API_KEY_PERSONAL:-}
+  openai:
+    kind:
+      type: catalog
+      name: openai
+    url: https://api.openai.com
+    auth:
+      type: static_key
+      key: ${OPENAI_API_KEY_PERSONAL}
+  agw:
+    kind:
+      type: catalog
+      name: openai
+    url: https://agw.noclues.net
+    auth:
+      type: static_key
+      key: ${AGW_API_KEY}
+  agw-anthropic:
+    kind:
+      type: catalog
+      name: anthropic
+    url: https://agw.noclues.net
+    auth:
+      type: static_key
+      key: ${AGW_API_KEY}
+    cache_control_strategy: anthropic_breakpoints
+models:
+  anthropic/claude-opus-4-8:
+    provider_name: claude-opus-4-8
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: anthropic
+    context_window: 400000
+  anthropic/claude-sonnet-4-6:
+    provider_name: claude-sonnet-4-6
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: anthropic
+    context_window: 400000
+  anthropic/claude-haiku-4-5:
+    provider_name: claude-haiku-4-5
+    variant: claude
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: anthropic
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  openai/gpt-5.4:
+    provider_name: gpt-5.4
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: openai
+    reasoning:
+      type: effort
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      default_level: high
+    context_window: 400000
+  openai/gpt-5.4-mini:
+    provider_name: gpt-5.4-mini
+    variant: openai
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: openai
+    reasoning:
+      type: effort
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      default_level: medium
+    context_window: 400000
+  agw/gpt-5.5:
+    enabled: false
+  agw/gpt-5.4:
+    enabled: false
+  agw/gpt-5.4-mini:
+    enabled: false
+  agw/gpt-5.6-sol:
+    enabled: false
+  agw/gpt-5.6-terra:
+    enabled: false
+  agw/gpt-5.6-luna:
+    enabled: false
+  agw/gpt-6-astra:
+    enabled: false
+  agw/gpt-6-astra:api:
+    provider_name: gpt-6-astra:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: gpt_6_astra
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      - xhigh
+      - max
+      default_level: high
+    context_window: 400000
+  agw/gpt-6-sol:api:
+    provider_name: gpt-6-sol:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/gpt-6.1-sol:api:
+    provider_name: gpt-6.1-sol:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/gpt-6-luna:api:
+    provider_name: gpt-6-luna:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/gpt-5.6-terra:api:
+    provider_name: gpt-5.6-terra:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: gpt_5_6_terra
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      - xhigh
+      - max
+      default_level: high
+    context_window: 400000
+  agw/gpt-5.6-sol:api:
+    provider_name: gpt-5.6-sol:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: gpt_5_6_sol
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      - xhigh
+      - max
+      default_level: high
+    context_window: 400000
+  agw/gpt-5.6-luna:api:
+    provider_name: gpt-5.6-luna:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: gpt_5_6_luna
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      - xhigh
+      - max
+      default_level: xhigh
+    context_window: 400000
+  agw/gpt-5.4-mini:api:
+    provider_name: gpt-5.4-mini:api
+    variant: openai
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: gpt_5_4
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      - xhigh
+      - max
+      default_level: medium
+    context_window: 400000
+  agw/gpt-5.4:api:
+    provider_name: gpt-5.4:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: gpt_5_4
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      - xhigh
+      - max
+      default_level: high
+    context_window: 400000
+  agw/gpt-oss-120b:api:
+    provider_name: gpt-oss-120b:api
+    variant: openai
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/claude-sonnet-5:api:
+    provider_name: claude-sonnet-5:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/claude-sonnet-5-5:api:
+    provider_name: claude-sonnet-5-5:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    context_window: 400000
+  agw/ember-1:api:
+    provider_name: ember-1:api
+    variant: other
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/deepseek-v4-pro-0813:api:
+    provider_name: deepseek-v4-pro-0813:api
+    variant: other
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/deepseek-v4-flash-0731:api:
+    provider_name: deepseek-v4-flash-0731:api
+    variant: other
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/deepseek-v4.1-flash:api:
+    provider_name: deepseek-v4.1-flash:api
+    variant: other
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: deepseek_v4_flash
+      can_disable: true
+      levels:
+      - low
+      - high
+      - max
+      default_level: high
+    context_window: 400000
+  agw/glm-5.3:api:
+    provider_name: glm-5.3:api
+    variant: other
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: zai_glm_5_3
+      can_disable: false
+      levels:
+      - high
+      - max
+      default_level: high
+    context_window: 400000
+  agw/glm-5.3-flash:api:
+    provider_name: glm-5.3-flash:api
+    variant: other
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: zai_glm_5_3
+      can_disable: false
+      levels:
+      - high
+      - max
+      default_level: high
+    context_window: 400000
+  agw/glm-5.2:api:
+    provider_name: glm-5.2:api
+    variant: other
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: zai_glm_5_2
+      can_disable: true
+      levels:
+      - high
+      - max
+      default_level: high
+    context_window: 400000
+  agw/kimi-k3:api:
+    provider_name: kimi-k3:api
+    variant: other
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: effort
+      effort_set: kimi_k3
+      can_disable: true
+      levels:
+      - low
+      - high
+      - max
+      default_level: high
+    context_window: 400000
+  agw-anthropic/claude-sonnet-5:api:
+    provider_name: claude-sonnet-5:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw-anthropic/claude-fable-5-1:api:
+    provider_name: claude-fable-5-1:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    reasoning:
+      type: effort
+      effort_set: claude_fable_5_1
+      can_disable: true
+      levels:
+      - low
+      - medium
+      - high
+      - xhigh
+      - max
+      default_level: medium
+    context_window: 400000
+  agw-anthropic/claude-haiku-5-5:api:
+    provider_name: claude-haiku-5-5:api
+    variant: claude
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/gpt-6.1-terra:api:
+    provider_name: gpt-6.1-terra:api
+    variant: openai
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw/gemini-4-argon:api:
+    provider_name: gemini-4-argon:api
+    variant: other
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+  agw-anthropic/claude-opus-5-5:api:
+    provider_name: claude-opus-5-5:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    context_window: 400000
+  agw-anthropic/claude-opus-5:api:
+    provider_name: claude-opus-5:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    context_window: 400000
+  agw-anthropic/claude-opus-4-8:api:
+    provider_name: claude-opus-4-8:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    context_window: 400000
+  agw-anthropic/claude-sonnet-4-6:api:
+    provider_name: claude-sonnet-4-6:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    context_window: 400000
+  agw-anthropic/claude-fable-5:api:
+    provider_name: claude-fable-5:api
+    variant: claude
+    class: full
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    context_window: 400000
+  agw-anthropic/claude-haiku-4-5:api:
+    provider_name: claude-haiku-4-5:api
+    variant: claude
+    class: mini
+    max_output_tokens_per_turn: 65535
+    provider: agw-anthropic
+    reasoning:
+      type: no_reasoning
+    context_window: 400000
+active_session: {}
+default_permission_matcher: bypass
+skills:
+  paths:
+    - $HOME/.agents/skills
+integrations:
+  search:
+    providers:
+      tavily:
+        enabled: true
+        key: ${TAVILY_API_KEY}
+mcp_servers:
+  warpstream:
+    transport: http
+    url: https://console.warpstream.com/api/v1/mcp
+    headers:
+      warpstream-api-key-wi_6bb3acd9_7003_4c6e_b784_9a76eff7f1ea: ${WARPSTREAM_API_KEY}
