@@ -31,10 +31,8 @@ link_file() {
 	printf 'Linked %s to %s\n' "$destination" "$DOTFILES/$source"
 }
 
-# The shell config is linked, while its sibling paths file stays in the repo.
-# zshrc sources it through DOTFILES instead of needing a second home-directory link.
-# Zsh
-link_file zsh/zshrc "$HOME/.zshrc"
+# Zsh is managed by Home Manager (nix/zsh.nix), which writes ~/.zshrc.
+# zsh/zshrc is kept only for machines not yet on Home Manager.
 
 # Tmux
 link_file tmux/tmux.conf "$HOME/.tmux.conf"
