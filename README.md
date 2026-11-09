@@ -1,62 +1,41 @@
 # Dotfiles
 
-## Install
+Personal cross-platform shell, editor, terminal, and development configuration. Shared settings live alongside specific per-platform modules and package sources.
 
-The setup uses explicit symlinks. Existing files are backed up with a timestamp
-before they are replaced.
+## Start here
+
+- `AGENTS.md`: repository conventions, configuration ownership, workflows, and machine context.
+- `flake.nix`: Home Manager targets.
+- `nix/`: Nix packages and platform modules.
+- `install.sh`: links plain configuration files into their runtime locations.
+- `Brewfile`: GUI application reference for the Mac target.
+
+## Setup
+
+Clone the repository, recreate ignored private files for the machine, apply the relevant Home Manager target, and run `install.sh` for plain configuration links.
 
 ```sh
 git clone git@github.com:treethought/dotfiles.git "$HOME/dotfiles"
 cd "$HOME/dotfiles"
-./install-omz.sh
-./install.sh
-exec zsh
-```
-
-If the repository is elsewhere, set `DOTFILES` before running the installer:
-
-```sh
-export DOTFILES="$HOME/path/to/dotfiles"
-cd "$DOTFILES"
-./install-omz.sh
 ./install.sh
 ```
 
-`install-omz.sh` installs Oh My Zsh and the three custom plugins used by
-`zsh/zshrc`. It does not replace existing installations.
-
-`install.sh` links the managed configuration files into their expected
-locations. The shell config sources `zsh/paths.zsh` from the repository and
-optionally loads private overrides.
-
-## Private files
-
-Files under `private/` are ignored by Git. They hold secrets, work packages,
-and machine-specific shell settings.
+The current primary Home Manager target is `framework`; `mac` is the platform-specific secondary target:
 
 ```sh
-mkdir -p private
-chmod 700 private
-$EDITOR private/secrets.zsh
-chmod 600 private/secrets.zsh
+home-manager switch --flake ~/dotfiles#framework
+home-manager switch --flake ~/dotfiles#mac
 ```
 
-The optional files currently used are:
+## Configuration ownership
 
-```text
-private/secrets.zsh
-zsh/paths.zsh.private
-Brewfile.private
-```
+| Area | Location |
+| --- | --- |
+| Portable user packages, fonts, and shell integrations | `nix/packages.nix`, `nix/zsh.nix` |
+| Shared and platform-specific Home Manager settings | `nix/common.nix`, `nix/linux.nix`, `nix/darwin.nix` |
+| Linux desktop applications | `nix/flatpak.nix` |
+| Plain editor, terminal, multiplexer, Git, and tool configuration | Individual directories and `install.sh` |
+| Mac GUI application reference | `Brewfile` |
+| Secrets and machine-specific overrides | Ignored `private/` and `*.private` files |
 
-## Packages
-
-```sh
-brew bundle --file Brewfile
-[ ! -f Brewfile.private ] || brew bundle --file Brewfile.private
-```
-
-## Managed locations
-
-The installer manages Zsh, tmux, Starship, Neovim, Ranger, Git, Ghostty,
-Zellij, Crush, and PolyToken.
+See `AGENTS.md` for the detailed operating context and maintenance patterns.

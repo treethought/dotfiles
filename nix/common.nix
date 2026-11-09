@@ -1,4 +1,4 @@
-# Shared by Linux and macOS. Entry point that pulls in the other modules.
+# Shared configuration. Platform-specific modules are selected by flake target.
 #   packages.nix  - everything installed (CLI tools, languages, fonts)
 #   zsh.nix       - shell behaviour
 #   linux.nix / darwin.nix - per-OS bits (added by flake.nix)

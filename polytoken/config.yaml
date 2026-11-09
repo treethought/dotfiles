@@ -487,9 +487,3 @@ integrations:
       tavily:
         enabled: true
         key: ${TAVILY_API_KEY}
-mcp_servers:
-  warpstream:
-    transport: http
-    url: https://console.warpstream.com/api/v1/mcp
-    headers:
-      warpstream-api-key-wi_6bb3acd9_7003_4c6e_b784_9a76eff7f1ea: ${WARPSTREAM_API_KEY}

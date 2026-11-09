@@ -1,5 +1,5 @@
 {
-  description = "treethought dotfiles: Home Manager for Linux (Fedora) and macOS";
+  description = "treethought dotfiles: shared and platform-specific Home Manager configurations";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";

@@ -8,6 +8,7 @@
     bat btop curl dust gh git git-lfs glow jq just lazygit lnav
     neovim pv ranger rclone ripgrep _7zz tmux
     websocat wget yt-dlp zellij ffmpeg
+    librepods
 
     # languages / dev
     go
