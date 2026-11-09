@@ -39,7 +39,7 @@ The repo does not manage root-owned system state. The Fedora host setup includes
 - zsh, Ghostty from the `scottames/ghostty` COPR, and Tailscale.
 - Snapper and Btrfs Assistant for root and home snapshots.
 - A separate `/nix` Btrfs subvolume.
-- PipeWire, Bluetooth, hardware, SELinux, and system services.
+- PipeWire, Bluetooth, hardware, SELinux, system services, and Homebrew's Fedora build prerequisites.
 
 See `docs/fedora.md` and `docs/hardware.md` for machine-specific details. Power management is provided by Fedora's `tuned`/`tuned-ppd` setup.
 
@@ -52,7 +52,7 @@ Use the smallest appropriate ownership boundary:
 | Shared CLI tools, languages, fonts, shell integrations | Nix/Home Manager | `nix/packages.nix`, `nix/zsh.nix` |
 | NUR packages | Nix/Home Manager | `nix/packages.nix`, currently Crush |
 | Flatpak desktop apps | Flathub through nix-flatpak | `nix/flatpak.nix` |
-| Fedora drivers, codecs, system services, audio engines, terminal | dnf or vendor/COPR repo | manual Fedora setup |
+| Fedora drivers, codecs, system services, audio engines, terminal, and native build toolchain | dnf or vendor/COPR repo | manual Fedora setup |
 | macOS GUI apps | Homebrew | `Brewfile` |
 | Secrets and per-machine overrides | ignored local files | `private/`, `*.private` |
 
@@ -60,9 +60,9 @@ The package boundaries are intentional: terminal and host-integrated tools use N
 
 ### Adding Nix packages
 
-Add a package to `nix/packages.nix`, then use the normal build and switch workflow.
+Add a package to `nix/packages.nix`, then use the normal build and switch workflow. Small custom binary packages can be defined in a local `let` there with pinned versions and hashes.
 
-`librepods` is currently managed this way as an AirPods utility.
+`librepods` and the pinned `ntn` Notion CLI are currently managed this way.
 
 ### Adding Flatpaks
 
@@ -76,9 +76,9 @@ kbuildsycoca6 --noincremental
 
 Root-owned system software is maintained separately from Home Manager. Record significant changes in `docs/fedora.md` or `docs/hardware.md`, and update `fedora/baseline.txt` when the installed baseline changes.
 
-### macOS and Brew
+### Homebrew
 
-`Brewfile` remains the macOS reference. Most portable CLI tools have moved to Nix, while GUI casks remain Brew-managed until a future nix-darwin migration.
+`Brewfile` remains the reference for the Mac target. On the current machine, Linuxbrew is installed separately for private internal tools; its Fedora prerequisites are the `development-tools` group plus `procps-ng`, `curl`, and `file`. Most portable CLI tools remain Nix-managed.
 
 ## Nix and Home Manager rules
 
