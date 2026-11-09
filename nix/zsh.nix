@@ -109,6 +109,10 @@
         bindkey -M vicmd 'j' down-line-or-beginning-search
       }
 
+      if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
+      fi
+
       # Node versions via fnm (replaces nvm): auto-switches on cd when a
       # directory has .nvmrc / .node-version.  fnm install 22 / fnm use 22 / fnm default 22
       eval "$(fnm env --use-on-cd --shell zsh)"

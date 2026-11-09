@@ -37,7 +37,7 @@
 	insteadOf = https://github.com/
 [credential "https://github.com"]
 	helper =
-	helper = !gh auth git-credential
+	helper = !/home/treethought/.nix-profile/bin/.gh-wrapped auth git-credential
 [credential "https://gist.github.com"]
 	helper =
-	helper = !gh auth git-credential
+	helper = !/home/treethought/.nix-profile/bin/.gh-wrapped auth git-credential

@@ -23,6 +23,8 @@
   home.sessionPath = [
     "$HOME/.local/bin"
     "$HOME/go/bin"
+    "/home/linuxbrew/.linuxbrew/bin"
+    "/home/linuxbrew/.linuxbrew/sbin"
   ];
 
   fonts.fontconfig.enable = true;
