@@ -16,8 +16,13 @@
     fnm          # Node version manager (nvm replacement, reads .nvmrc), set up in zsh.nix
     bun
 
+
     # harnesses / agents
     nur.repos.charmbracelet.crush   # Charm's recommended NUR Nix source
+    tuicr       # TUI code review
+    herdr       # terminal runtime for coding agents
+    worktrunk   # wt: git worktrees
+    gcx
 
     # cloud / k8s
     argocd awscli2 kubectx k9s pulumi-bin

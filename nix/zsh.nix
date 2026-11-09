@@ -113,6 +113,9 @@
       # directory has .nvmrc / .node-version.  fnm install 22 / fnm use 22 / fnm default 22
       eval "$(fnm env --use-on-cd --shell zsh)"
 
+      # worktrunk: lets `wt switch` change your shell's directory, plus completions
+      eval "$(wt config shell init zsh)"
+
       # machine-specific / secret overrides, kept out of git (see .gitignore)
       [[ -r "$DOTFILES/zsh/paths.zsh.private" ]] && source "$DOTFILES/zsh/paths.zsh.private"
       [[ -r "$DOTFILES/private/secrets.zsh" ]] && source "$DOTFILES/private/secrets.zsh"
