@@ -12,9 +12,11 @@
       url = "github:nix-community/NUR";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Declarative Flatpak apps (Linux only), see nix/flatpak.nix
+    nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=latest";
   };
 
-  outputs = { nixpkgs, home-manager, nur, ... }:
+  outputs = { nixpkgs, home-manager, nur, nix-flatpak, ... }:
     let
       mkHome = system: modules:
         home-manager.lib.homeManagerConfiguration {
@@ -28,7 +30,10 @@
     in {
       homeConfigurations = {
         # Fedora Framework laptop:  home-manager switch --flake ~/dotfiles#framework
-        "framework" = mkHome "x86_64-linux" [ ./nix/linux.nix ];
+        "framework" = mkHome "x86_64-linux" [
+          nix-flatpak.homeManagerModules.nix-flatpak
+          ./nix/linux.nix
+        ];
         # Work Mac:                 home-manager switch --flake ~/dotfiles#mac
         "mac" = mkHome "aarch64-darwin" [ ./nix/darwin.nix ];
       };
