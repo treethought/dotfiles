@@ -16,6 +16,9 @@
     fnm          # Node version manager (nvm replacement, reads .nvmrc), set up in zsh.nix
     bun
 
+    # harnesses / agents
+    nur.repos.charmbracelet.crush   # Charm's recommended NUR Nix source
+
     # cloud / k8s
     argocd awscli2 kubectx k9s pulumi-bin
 

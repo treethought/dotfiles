@@ -49,7 +49,7 @@
   },
   "options": {
     "context_paths": [
-      "/Users/treethought/.claude/CLAUDE.md",
+      "$HOME/.claude/CLAUDE.md",
       "CLAUDE.md",
       "CLAUDE.local.md"
     ]
