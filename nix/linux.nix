@@ -18,5 +18,12 @@
 
   home.packages = with pkgs; [
     wl-clipboard # wl-copy / wl-paste (replaces pbcopy in tmux)
+
+    # niri session. These are Wayland/Linux-only, so they stay out of the
+    # shared packages.nix that the Mac target also imports.
+    swaylock # screen lock, bound to Super+Alt+L
+    swaybg # wallpaper, needs a spawn-at-startup to do anything
+    mako # notification daemon, dbus-activated so no autostart needed
+    brightnessctl # backlight keys, needs the udev rule + video group
   ];
 }

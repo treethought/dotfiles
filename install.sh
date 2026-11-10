@@ -58,6 +58,10 @@ link_file git/gitconfig.local.private "$HOME/.gitconfig.local"
 # Ghostty
 link_file ghostty/config.ghostty "$HOME/.config/ghostty/config.ghostty"
 
+# Niri
+link_file niri/config.kdl "$HOME/.config/niri/config.kdl"
+link_file niri/niri-portals.conf "$HOME/.config/xdg-desktop-portal/niri-portals.conf"
+
 # Zellij
 link_file zellij/config.kdl "$HOME/.config/zellij/config.kdl"
 link_file zellij/scripts/session-picker.sh "$HOME/.config/zellij/scripts/session-picker.sh"
@@ -71,5 +75,9 @@ link_file polytoken/config.yaml "$HOME/.config/polytoken/config.yaml"
 
 # OpenCode
 link_file opencode/config.json "$HOME/.config/opencode/opencode.json"
+
+# Roast
+link_file roast/config.yaml "$HOME/.config/roast/config.yaml"
+chmod 600 "$HOME/.config/roast/config.yaml"
 
 printf 'Linked dotfiles from %s\n' "$DOTFILES"
