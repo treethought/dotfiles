@@ -69,4 +69,7 @@ link_file crush/hooks/deny-dangerous.sh "$HOME/.config/crush/hooks/deny-dangerou
 # PolyToken
 link_file polytoken/config.yaml "$HOME/.config/polytoken/config.yaml"
 
+# OpenCode
+link_file opencode/config.json "$HOME/.config/opencode/opencode.json"
+
 printf 'Linked dotfiles from %s\n' "$DOTFILES"
