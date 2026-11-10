@@ -74,6 +74,8 @@ in {
     ntn
 
     # harnesses / agents
+    codex
+    opencode
     nur.repos.charmbracelet.crush # Charm's recommended NUR Nix source
     tuicr # TUI code review
     herdr # terminal runtime for coding agents

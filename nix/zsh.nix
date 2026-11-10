@@ -84,6 +84,20 @@
       # (simplified: the oh-my-zsh version also handles URLs/tarballs)
       take() { mkdir -p -- "$1" && cd -- "$1"; }
 
+      # tailscale account switching between the two logged-in profiles, which
+      # are nicknamed "me" (personal) and "work". tsl lists them.
+      # switch is silent apart from "Success.", so print the resulting tailnet
+      # and this node's address in it (the netmap is still empty for a moment
+      # after a switch, so peer counts are not trustworthy here)
+      _ts_switch() {
+        tailscale switch "$1" || return
+        tailscale status --json |
+          jq -r '"active: \(.CurrentTailnet.Name // "?") | this node: \(.Self.DNSName) (\(.Self.TailscaleIPs[0]))"'
+      }
+      tsme()   { _ts_switch me; }
+      tswork() { _ts_switch work; }
+      tsl()    { tailscale switch --list; }
+
       # from oh-my-zsh lib/termsupport.zsh: window/tab title shows the current
       # dir, plus the running command while it runs
       autoload -Uz add-zsh-hook
