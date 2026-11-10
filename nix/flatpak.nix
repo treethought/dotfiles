@@ -11,6 +11,9 @@
       "com.slack.Slack"
       "com.spotify.Client"
       "org.signal.Signal"
+
+      # Audio: levels, routing, DSP
+      "com.saivert.pwvucontrol" # PipeWire mixer with live input/output meters
     ];
     update.auto.enable = true; # weekly background updates
   };

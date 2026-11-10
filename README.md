@@ -5,6 +5,7 @@ Personal cross-platform shell, editor, terminal, and development configuration. 
 ## Start here
 
 - `AGENTS.md`: repository conventions, configuration ownership, workflows, and machine context.
+- `docs/`: host setup for Fedora and machine-specific hardware notes, including the audio stack.
 - `flake.nix`: Home Manager targets.
 - `nix/`: Nix packages and platform modules.
 - `install.sh`: links plain configuration files into their runtime locations.
@@ -34,6 +35,7 @@ home-manager switch --flake ~/dotfiles#mac
 | Portable user packages, fonts, and shell integrations | `nix/packages.nix`, `nix/zsh.nix` |
 | Shared and platform-specific Home Manager settings | `nix/common.nix`, `nix/linux.nix`, `nix/darwin.nix` |
 | Linux desktop applications | `nix/flatpak.nix` |
+| PipeWire / WirePlumber configuration | `nix/audio.nix` |
 | Plain editor, terminal, multiplexer, Git, and tool configuration | Individual directories and `install.sh` |
 | Mac GUI application reference | `Brewfile` |
 | Secrets and machine-specific overrides | Ignored `private/` and `*.private` files |

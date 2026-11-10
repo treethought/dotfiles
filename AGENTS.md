@@ -6,7 +6,7 @@ This repository is a cross-platform personal environment with shared configurati
 
 ## First steps
 
-Read `README.md` and the relevant files under `docs/` for repository context. Inspect the relevant module and its callers before editing. Check `git status` first, since unrelated uncommitted work may be present.
+Read `README.md`, `docs/fedora.md`, and `docs/hardware.md` for repository and machine context, and `handoff.md` for current status. Inspect the relevant module and its callers before editing. Check `git status` first, since unrelated uncommitted work may be present.
 
 On Fedora, the primary Home Manager target is:
 
@@ -52,6 +52,7 @@ Use the smallest appropriate ownership boundary:
 | Shared CLI tools, languages, fonts, shell integrations | Nix/Home Manager | `nix/packages.nix`, `nix/zsh.nix` |
 | NUR packages | Nix/Home Manager | `nix/packages.nix`, currently Crush |
 | Flatpak desktop apps | Flathub through nix-flatpak | `nix/flatpak.nix` |
+| PipeWire / WirePlumber configuration | Nix/Home Manager | `nix/audio.nix` |
 | Fedora drivers, codecs, system services, audio engines, terminal, and native build toolchain | dnf or vendor/COPR repo | manual Fedora setup |
 | macOS GUI apps | Homebrew | `Brewfile` |
 | Secrets and per-machine overrides | ignored local files | `private/`, `*.private` |
@@ -87,6 +88,7 @@ Root-owned system software is maintained separately from Home Manager. Record si
 - `nix/linux.nix` contains Fedora-only Home Manager settings.
 - `nix/darwin.nix` contains Mac-only settings.
 - `nix/flatpak.nix` manages Flathub apps on Linux.
+- `nix/audio.nix` manages the PipeWire config files and the internal-mic reset unit. It does not install the engine.
 - `flake.lock` pins inputs and should change when inputs are intentionally updated.
 - A new file referenced by a flake must be staged or intent-to-added before evaluation because flakes only see Git-tracked files.
 - `home.stateVersion` records the module compatibility baseline and is changed deliberately.
@@ -108,6 +110,25 @@ nix log /nix/store/<derivation>.drv
 - Neovim, Ranger, Ghostty, Zellij, Git, Crush, and PolyToken config paths
 
 When adding a managed file, update `install.sh` and test it on a non-conflicting path. Preserve the backup behavior.
+
+## Audio
+
+Nix owns the audio configuration; dnf owns the engine. `nix/audio.nix` writes
+`~/.config/pipewire/pipewire.conf.d/` and a systemd user unit, while PipeWire, WirePlumber,
+`rtkit`, `pipewire-jack`, and any DAW or plugin come from dnf. Keep it that way: a plugin host
+and its plugins must share one glibc, and the engine needs root-owned realtime setup.
+
+The internal mic has a known +30 dB preamp boost that sits outside WirePlumber's volume
+model and clips the ADC, so input level runs hot and distorted no matter what the desktop
+slider says. `nix/audio.nix` zeroes that control at login. `docs/hardware.md` has the control
+numbers and how to measure the real signal with `pw-record` and `ffmpeg astats`. Do not
+diagnose input gain from a mixer GUI alone; those sliders do not show every gain stage.
+
+Hardware notes: the USB interface is a Universal Audio Volt 2 (card `V2`, 44.1-192 kHz). It
+has no software mixer, so input gain is the physical knob, and with nothing plugged into an
+input it still appears as a source reading about `-76 dBFS`, silence that is easy to mistake
+for a working device. Always confirm the default source is the input actually in use and that
+a connected interface has something attached.
 
 ## AirPods and Bluetooth
 

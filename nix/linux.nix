@@ -2,7 +2,10 @@
 # GUI apps come from Flatpak (nix/flatpak.nix); system/audio stuff from dnf.
 { pkgs, ... }:
 {
-  imports = [ ./flatpak.nix ];
+  imports = [
+    ./audio.nix
+    ./flatpak.nix
+  ];
 
   home.homeDirectory = "/home/treethought";
 
