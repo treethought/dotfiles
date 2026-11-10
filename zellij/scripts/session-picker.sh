@@ -5,11 +5,15 @@
 # ctrl-k kills the highlighted session (keeps it resurrectable),
 # ctrl-d deletes it entirely. The current session is never killed/deleted.
 
-zjsh=$(command -v zjsh)
 fzf=$(command -v fzf)
 zellij=$(command -v zellij)
 
-list="$zjsh list -i | grep -e '^● ' -e '^↺ '"
+if [ -z "$fzf" ] || [ -z "$zellij" ]; then
+	printf '%s\n' 'session picker requires fzf and zellij' >&2
+	exit 1
+fi
+
+list="$zellij list-sessions --no-formatting | sed 's/ (current)$//'"
 guard='[ "$1" != "$ZELLIJ_SESSION_NAME" ] &&'
 
 choice=$(sh -c "$list" | "$fzf" \
@@ -22,7 +26,8 @@ choice=$(sh -c "$list" | "$fzf" \
 
 [ -z "$choice" ] && exit 0
 
-case "$choice" in
-"● "* | "↺ "*) exec "$zjsh" connect "$choice" ;;
-*) exec "$zellij" action switch-session "$choice" ;;
-esac
+if [ "$choice" = "$ZELLIJ_SESSION_NAME" ]; then
+	exit 0
+fi
+
+exec "$zellij" action switch-session "$choice"
