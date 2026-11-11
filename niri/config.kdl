@@ -3,15 +3,28 @@
 // Check the wiki for a full description of the configuration:
 // https://niri-wm.github.io/niri/Configuration:-Introduction
 //
-// Local changes from the stock config, both marked "LOCAL:" below:
+// Local changes from the stock config, all marked "LOCAL:" below:
 //   * Caps Lock acts as Escape, under input > keyboard > xkb near the top.
 //     That is an xkb option, not a bind: binds only trigger niri actions.
 //   * Mod+T opens ghostty instead of alacritty, in the binds section.
+//   * Directional tiers reworked, see the LOCAL note in binds:
+//       Mod+H/J/K/L          focus
+//       Mod+Shift+H/J/K/L    move
+//       Mod+Ctrl+H/L         focus another screen
+//     Shift and Ctrl therefore mean the opposite of what the stock config
+//     does, where Shift focused monitors and Ctrl moved windows/columns.
+//   * Bare Mod+J and Mod+K walk a column and then step to the next workspace
+//     instead of only moving between windows in the current column.
 
 // Input device configuration.
 // Find the full list of options on the wiki:
 // https://niri-wm.github.io/niri/Configuration:-Input
 input {
+    // LOCAL: Alt is the Mod modifier for every Mod+ bind below, instead of the
+    // default Super. Valid values are Super, Alt, Mod3, Mod5, Ctrl and Shift;
+    // the wiki advises against Ctrl and Shift.
+    mod-key "Alt"
+
     keyboard {
         xkb {
             // You can set rules, model, layout, variant and options.
@@ -41,6 +54,10 @@ input {
         // drag false
         // drag-lock
         natural-scroll
+        // LOCAL: a negative factor inverts that axis. This flips vertical
+        // scrolling on top of natural-scroll; set vertical=1.0 or delete the
+        // line to go back. Add the same line to the mouse block for a wheel.
+        scroll-factor vertical=-1.0
         // accel-speed 0.2
         // accel-profile "flat"
         // scroll-method "two-finger"
@@ -52,6 +69,9 @@ input {
         // natural-scroll
         // accel-speed 0.2
         // accel-profile "flat"
+        // LOCAL: invert the vertical wheel. Same meaning as the touchpad
+        // line above; a wheel needs this one, a touchpad needs that one.
+        scroll-factor vertical=-1.0
         // scroll-method "no-scroll"
     }
 
@@ -161,7 +181,9 @@ layout {
     // You can change how the focus ring looks.
     focus-ring {
         // Uncomment this line to disable the focus ring.
-        // off
+        // LOCAL: off, because the border below is on. Both draw at once
+        // otherwise and you get two outlines around the focused window.
+        off
 
         // How many logical pixels the ring extends out from the windows.
         width 4
@@ -200,10 +222,10 @@ layout {
     border {
         // The settings are the same as for the focus ring.
         // If you enable the border, you probably want to disable the focus ring.
-        off
+        // LOCAL: enabled (the `off` line above was removed), focus ring is off
+        // to avoid drawing two outlines.
 
-        width 4
-        active-color "#ffc87f"
+        width 2
         inactive-color "#505050"
 
         // Color of the border around windows that request your attention.
@@ -288,7 +310,10 @@ hotkey-overlay {
 // Additionally, clients will be informed that they are tiled, removing some client-side rounded corners.
 // This option will also fix border/focus ring drawing behind some semitransparent windows.
 // After enabling or disabling this, you need to restart the apps for this to take effect.
-// prefer-no-csd
+// LOCAL: enabled. niri has no server-side title bars, so CSD is a second,
+// redundant title bar that also forces the focus ring to draw as a solid
+// background behind the window instead of around it. Comment out to undo.
+prefer-no-csd
 
 // You can change the path where screenshots are saved.
 // A ~ at the front will be expanded to the home directory.
@@ -344,11 +369,13 @@ window-rule {
     // block-out-from "screencast"
 }
 
-// Example: enable rounded corners for all windows.
-// (This example rule is commented out with a "/-" in front.)
-/-window-rule {
+// LOCAL: global window appearance. Rounded corners, and the border drawn
+// around windows instead of as a filled rectangle behind them, which is what
+// made translucent windows look tinted by the border color.
+window-rule {
     geometry-corner-radius 12
     clip-to-geometry true
+    draw-border-with-background false
 }
 
 binds {
@@ -412,25 +439,27 @@ binds {
     Mod+Up    { focus-window-up; }
     Mod+Right { focus-column-right; }
     Mod+H     { focus-column-left; }
-    Mod+J     { focus-window-down; }
-    Mod+K     { focus-window-up; }
+    Mod+J     { focus-window-or-workspace-down; }
+    Mod+K     { focus-window-or-workspace-up; }
     Mod+L     { focus-column-right; }
 
     Mod+Ctrl+Left  { move-column-left; }
     Mod+Ctrl+Down  { move-window-down; }
     Mod+Ctrl+Up    { move-window-up; }
     Mod+Ctrl+Right { move-column-right; }
-    Mod+Ctrl+H     { move-column-left; }
+    Mod+Ctrl+H     { focus-monitor-left; }
     Mod+Ctrl+J     { move-window-down; }
     Mod+Ctrl+K     { move-window-up; }
-    Mod+Ctrl+L     { move-column-right; }
+    Mod+Ctrl+L     { focus-monitor-right; }
 
-    // Alternative commands that move across workspaces when reaching
-    // the first or last window in a column.
-    // Mod+J     { focus-window-or-workspace-down; }
-    // Mod+K     { focus-window-or-workspace-up; }
-    // Mod+Ctrl+J     { move-window-down-or-to-workspace-down; }
-    // Mod+Ctrl+K     { move-window-up-or-to-workspace-up; }
+    // LOCAL: directional tiers, swapped relative to the stock config.
+    // Stock used Shift for monitor focus and Ctrl for moves; here Ctrl means
+    // screens and Shift means moves:
+    //   Mod+H/J/K/L       focus (J/K escalate to the next workspace)
+    //   Mod+Shift+H/J/K/L move (H/L the column, J/K the window, J/K escalate)
+    //   Mod+Ctrl+H/L      focus another screen
+    //   Mod+Ctrl+J/K      move the window strictly within the column
+    // Alt+U/I still jump a workspace unconditionally.
 
     Mod+Home { focus-column-first; }
     Mod+End  { focus-column-last; }
@@ -441,10 +470,10 @@ binds {
     Mod+Shift+Down  { focus-monitor-down; }
     Mod+Shift+Up    { focus-monitor-up; }
     Mod+Shift+Right { focus-monitor-right; }
-    Mod+Shift+H     { focus-monitor-left; }
-    Mod+Shift+J     { focus-monitor-down; }
-    Mod+Shift+K     { focus-monitor-up; }
-    Mod+Shift+L     { focus-monitor-right; }
+    Mod+Shift+H     { move-column-left; }
+    Mod+Shift+J     { move-window-down-or-to-workspace-down; }
+    Mod+Shift+K     { move-window-up-or-to-workspace-up; }
+    Mod+Shift+L     { move-column-right; }
 
     Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
     Mod+Shift+Ctrl+Down  { move-column-to-monitor-down; }
@@ -637,3 +666,7 @@ binds {
     // moving the mouse or pressing any other key.
     Mod+Shift+P { power-off-monitors; }
 }
+
+// DMS Include Configs
+include "dms/input.kdl"
+include "dms/windowrules.kdl"
