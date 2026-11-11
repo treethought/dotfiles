@@ -62,6 +62,10 @@ link_file ghostty/config.ghostty "$HOME/.config/ghostty/config.ghostty"
 link_file niri/config.kdl "$HOME/.config/niri/config.kdl"
 link_file niri/niri-portals.conf "$HOME/.config/xdg-desktop-portal/niri-portals.conf"
 
+# DMS (Quickshell shell that draws the bar and generates niri/dms/*.kdl).
+# Only settings.json is tracked; the generated KDL files are not.
+link_file dms/settings.json "$HOME/.config/dms/settings.json"
+
 # Zellij
 link_file zellij/config.kdl "$HOME/.config/zellij/config.kdl"
 link_file zellij/scripts/session-picker.sh "$HOME/.config/zellij/scripts/session-picker.sh"
