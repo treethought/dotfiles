@@ -1,0 +1,10 @@
+private/
+
+ranger/bookmarks
+**/*.private
+
+# nix build symlink
+/result
+
+# local working note, not part of the repo
+/handoff.md
