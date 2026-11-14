@@ -1,0 +1,32 @@
+# Shared configuration. Platform-specific modules are selected by flake target.
+#   packages.nix  - everything installed (CLI tools, languages, fonts)
+#   zsh.nix       - shell behaviour
+#   fedora.nix / darwin.nix - per-OS bits, desktop.nix - needs a display
+{ ... }:
+{
+  imports = [
+    ./packages.nix
+    ./zsh.nix
+  ];
+
+  home.username = "treethought";
+  home.stateVersion = "25.05"; # set once, don't bump later
+
+  programs.home-manager.enable = true;
+
+  # Environment for the whole login session (not just zsh)
+  home.sessionVariables = {
+    EDITOR = "nvim";
+    DOTFILES = "$HOME/dotfiles";
+  };
+
+  home.sessionPath = [
+    "$HOME/.local/bin"
+    "$HOME/go/bin"
+    "/home/linuxbrew/.linuxbrew/bin"
+    "/home/linuxbrew/.linuxbrew/sbin"
+  ];
+
+  fonts.fontconfig.enable = true;
+
+}
