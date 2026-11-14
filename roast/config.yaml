@@ -1,0 +1,18 @@
+version: 1
+
+# Gateway URL and key come from the environment (private/secrets.zsh).
+inference_profiles:
+  gateway-finder:
+    model: gpt-5.6-sol:api
+    protocol: responses
+    api_key_env: AGW_API_KEY
+  gateway-verifier:
+    model: claude-opus-5:api
+    protocol: anthropic
+    api_key_env: AGW_API_KEY
+
+roles:
+  finder:
+    profile: gateway-finder
+  verifier:
+    profile: gateway-verifier
