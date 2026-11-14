@@ -24,8 +24,8 @@ That path fetches the bootstrap from `main`, so push the repo before using it.
 ## Running them separately
 
 ```sh
-BOOTSTRAP=0 ./proxmox/create-devbox.sh          # VM only
-ssh treethought@<guest-ip> 'bash -s' < proxmox/bootstrap-devbox.sh   # guest only
+BOOTSTRAP=0 ./proxmox/create-devbox.sh        # VM only
+./proxmox/bootstrap-devbox.sh --remote devbox   # stream it to the guest
 ```
 
 Re-running the bootstrap is how a guest is updated: it pulls, re-applies the target, and only
@@ -38,13 +38,13 @@ repeats steps that are already done.
 version), `CIUSER`, `SSHKEYS`, `BOOTSTRAP` (0 to stop after the VM).
 
 `bootstrap-devbox.sh`: `TARGET` (devbox), `REPO`, `DIR`, `TS_AUTHKEY` (skip the browser login),
-`SKIP_TAILSCALE` (leave the guest off the tailnet), `SSH_KEY` (use an existing private key
-instead of generating one), `SETUP_GH` (`1` to register the key without asking, `0` never).
+`SSH_KEY` (path on the machine running the script to an existing private key), and
+`SETUP_KEY`, `SKIP_TAILSCALE`, `SETUP_GH`, each `1` or `0` to answer a question without asking.
 
-Run on the guest, the three optional steps are questions: SSH key (default yes), join the
-tailnet (default yes), register the key with GitHub (default no). Piped in over SSH there is
-no tty, so those defaults apply silently and the variables above are how you change them. Over SSH these belong inside the remote
-command, as above, because a prefix before `ssh` never reaches the guest.
+The optional steps are questions: SSH key (default yes), join the tailnet (default yes),
+register the key with GitHub (default no). They are asked before any work starts, on whichever
+machine runs the script, and the answers are handed to the guest as variables, so `--remote`
+needs no terminal on the guest. Without a terminal the defaults apply.
 
 Subnet and gateway come from the node itself, so nothing here carries a site-specific address.
 

@@ -215,14 +215,14 @@ repo, applies the `devbox` target, runs `install.sh`, and joins the tailnet when
 is set. Re-running it only repeats the switch.
 
 ```sh
-ssh treethought@<guest-ip> 'bash -s' < proxmox/bootstrap-devbox.sh
-ssh treethought@<guest-ip> 'TS_AUTHKEY=tskey-auth-... bash -s' < proxmox/bootstrap-devbox.sh
+./proxmox/bootstrap-devbox.sh --remote devbox                 # stream it to the guest
+TS_AUTHKEY=tskey-auth-... ./proxmox/bootstrap-devbox.sh --remote devbox
 ```
 
-Without `TS_AUTHKEY` it runs `tailscale up`, prints the `login.tailscale.com` URL for you to
-approve, and stays in the wait until the node is running on the tailnet. `SKIP_TAILSCALE=1`
-leaves the guest off the tailnet entirely, which is what a template wants: each clone joins on
-its own rather than inheriting this node's identity.
+The optional steps are questions, asked before any work starts on whichever machine runs the
+script: SSH key (default yes), join the tailnet (default yes), register the key with gh (default
+no). The answers are handed to the guest as variables, so `--remote` needs no terminal there,
+and `bash -s < script` applies the defaults.
 
 Fedora needs `git` and `curl` first (`sudo dnf install -y git curl`); the script checks and
 stops with that message. It uses the Determinate Nix installer because the upstream one aborts
