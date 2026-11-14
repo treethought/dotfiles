@@ -1,0 +1,21 @@
+// LOCAL overrides applied after the DMS includes in config.kdl.
+//
+// DMS regenerates dms/layout.kdl and dms/colors.kdl from its settings UI, so
+// anything we want to keep regardless of the UI goes here. This file is
+// included last, which makes these values win over DMS output.
+layout {
+    // A thin white outline on the focused window, which is what the focus ring
+    // is: it draws only around the active window. niri's border would outline
+    // every window instead, so it stays off.
+    border {
+        off
+    }
+    focus-ring {
+        width 1
+        // Everforest accents, swap for a different one to compare:
+        //   cream  #d3c6aa   yellow #dbbc7f   green #a7c080
+        //   aqua   #83c092   orange #e69875   red   #e67e80
+        active-color "#d3c6aa"
+        inactive-color "#d3c6aa80"
+    }
+}
