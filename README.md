@@ -5,7 +5,7 @@ Personal cross-platform shell, editor, terminal, and development configuration. 
 ## Start here
 
 - `AGENTS.md`: repository conventions, configuration ownership, workflows, and machine context.
-- `docs/`: host setup for Fedora, the Proxmox NUC, and machine-specific hardware notes, including the audio stack.
+- `docs/`: host setup for the Linux machines, Proxmox guest provisioning, and hardware notes, including the PipeWire configuration used for audio work.
 - `flake.nix`: Home Manager targets.
 - `nix/`: Nix packages and platform modules.
 - `install.sh`: links plain configuration files into their runtime locations.

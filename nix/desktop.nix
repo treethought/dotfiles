@@ -1,6 +1,6 @@
 # Everything that needs a display. The laptop imports this; a headless guest
 # composes common + fedora and gets none of it. GUI applications come from
-# Flatpak (nix/flatpak.nix); the audio engine and system services come from dnf.
+# Flatpak (nix/flatpak.nix); the PipeWire engine and system services come from dnf.
 { pkgs, ... }:
 {
   imports = [

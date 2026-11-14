@@ -38,7 +38,7 @@
         # Work Mac:                 home-manager switch --flake ~/dotfiles#mac
         # No desktop module yet: it is Wayland-fedora specific today.
         "mac" = mkHome "aarch64-darwin" [ ./nix/darwin.nix ];
-        # Headless Fedora dev VM on the Proxmox NUC:
+        # Headless Fedora dev VM on the Proxmox host:
         #                           home-manager switch --flake ~/dotfiles#devbox
         "devbox" = mkHome "x86_64-linux" [ ./nix/fedora.nix ];
       };

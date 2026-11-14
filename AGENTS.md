@@ -4,6 +4,21 @@
 
 This repository is a cross-platform personal environment with shared configuration and specific per-platform modules. Keep shared configuration portable, keep secrets out of Git, and follow the package ownership documented below.
 
+## Secrets and identifying details
+
+This repository is public.
+
+- Secrets never go in Git: API keys, tokens, passwords, private keys, cookies, session IDs.
+  Tools read them from the environment; values that have to exist live in `private/`,
+  `*.private`, or the local `handoff.md`.
+- Identifying details need permission before they are added: IPs, MAC addresses, host names,
+  domains, tailnet names, usernames, email addresses, serials, machine IDs. That is per value
+  and per file.
+- Hardware is described where the configuration depends on it, such as sleep states, audio
+  codecs, or NIC behaviour, and not merely to name the machine.
+- Host-specific facts belong in `handoff.md`; documentation refers to them with placeholders.
+  Check the diff for these patterns before staging.
+
 ## First steps
 
 Read `README.md`, `docs/fedora.md`, `docs/proxmox.md`, and `docs/hardware.md` for repository and machine context, and any local `handoff.md` (gitignored, not tracked) for current status. Inspect the relevant module and its callers before editing. Check `git status` first, since unrelated uncommitted work may be present.
@@ -149,7 +164,8 @@ Rules:
 
 ## Audio
 
-Nix owns the audio configuration; dnf owns the engine. `nix/audio.nix` writes
+PipeWire configuration for Linux audio production and live coding is split by ownership: Nix
+writes the config, dnf installs the engine. `nix/audio.nix` owns
 `~/.config/pipewire/pipewire.conf.d/` and a systemd user unit, while PipeWire, WirePlumber,
 `rtkit`, `pipewire-jack`, and any DAW or plugin come from dnf. Keep it that way: a plugin host
 and its plugins must share one glibc, and the engine needs root-owned realtime setup.
