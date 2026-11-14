@@ -10,22 +10,21 @@ Two scripts: one builds the VM on the node, one configures the guest inside.
 ## Whole flow
 
 ```sh
-./proxmox/create-devbox.sh
+NODE=pve ./proxmox/create-devbox.sh
 ```
 
-From the laptop, without copying anything to the node:
+`NODE` names a host with root SSH access, so this works from the laptop. It streams
+`create-devbox.sh` to that node, reads the guest address back from it, and then runs
+`bootstrap-devbox.sh` against the guest directly. The node is not involved after the VM exists,
+and the guest questions are asked where you started the script.
 
-```sh
-ssh root@pve 'bash -s' < proxmox/create-devbox.sh
-```
-
-That path fetches the bootstrap from `main`, so push the repo before using it.
+Without `NODE` it runs as the node-side script: root, `qm`, and images already present.
 
 ## Running them separately
 
 ```sh
-BOOTSTRAP=0 ./proxmox/create-devbox.sh        # VM only
-./proxmox/bootstrap-devbox.sh --remote devbox   # stream it to the guest
+NODE=pve BOOTSTRAP=0 ./proxmox/create-devbox.sh   # VM only
+./proxmox/bootstrap-devbox.sh --remote <guest-ip> # configure an existing guest
 ```
 
 Re-running the bootstrap is how a guest is updated: it pulls, re-applies the target, and only

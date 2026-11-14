@@ -139,9 +139,10 @@ agents, and keep long-lived zellij sessions that survive moving between laptops.
 CLI tooling and shell as the laptop, without `nix/desktop.nix` and the audio, Flatpak, and font
 modules it pulls in. `nix/README.md` explains the layout.
 
-Create it with `proxmox/create-devbox.sh`, run as root on the node. The script downloads the
-Fedora Cloud Base Generic qcow2 if needed, verifies its checksum, creates the VM, imports the
-disk as `scsi0`, attaches a cloud-init drive, and starts it:
+Create it with `proxmox/create-devbox.sh`, run from the laptop with `NODE=pve`. It streams itself
+to the node, downloads the Fedora Cloud Base Generic qcow2 if needed, verifies its checksum,
+creates the VM, imports the disk as `scsi0`, attaches a cloud-init drive, starts it, reads the
+guest address from the agent, and then runs the bootstrap against the guest from here:
 
 ```sh
 ./proxmox/create-devbox.sh            # 201, devbox, DHCP lease
@@ -154,12 +155,8 @@ working devbox. `BOOTSTRAP=0` stops after the VM exists. When the script itself 
 streamed, it fetches the bootstrap from `main` instead of the neighbouring file, so the copy in
 the repo must be pushed for that path to work.
 
-From the laptop, stream it over root SSH instead of copying it, so the host always runs the
-checked-out version:
-
-```sh
-ssh root@pve 'bash -s' < proxmox/create-devbox.sh
-```
+The node-side script can also be run directly when it is already there, and `BOOTSTRAP=0` stops
+after the VM exists, reporting its address as `GUEST_IP`.
 
 The `qm` calls themselves only exist on the node, so this has to run there; a remote
 invocation is just a wrapper around root SSH. Driving it from the REST API instead would mean

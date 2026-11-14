@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# Create the headless Fedora dev VM on the Proxmox host.
-# Run as root on the node, or from any machine with root SSH access:
-#   ssh root@<node> 'bash -s' < create-devbox.sh [vmid]
-# The guest takes a DHCP lease unless IP is set; subnet and gateway come from the node.
+# Create a headless Fedora dev VM.
+#
+#   NODE=pve ./proxmox/create-devbox.sh              # create, then bootstrap the guest
+#   NODE=pve BOOTSTRAP=0 ./proxmox/create-devbox.sh   # create only
+#   ./proxmox/create-devbox.sh                        # run on the node itself
+#
+# The first form only needs ssh access to the node: it streams this file there,
+# then talks to the guest directly, so the guest setup and its questions happen
+# on the machine you started from. The guest takes a DHCP lease unless IP is
+# set; subnet and gateway are read from the node.
 set -euo pipefail
 
-VMID=${1:-201}
+VMID=${VMID:-201}
 NAME=${NAME:-devbox}
 IP=${IP:-}
 DNS=${DNS:-1.1.1.1}
@@ -22,16 +28,32 @@ ISO_DIR=/var/lib/vz/template/iso
 IMAGE="Fedora-Cloud-Base-Generic-${RELEASE}-${BUILD}.x86_64.qcow2"
 BASE_URL="https://download.fedoraproject.org/pub/fedora/linux/releases/${RELEASE}/Cloud/x86_64/images"
 
+NODE=${NODE:-}
+BOOTSTRAP=${BOOTSTRAP:-1}
+
 die() { echo "error: $*" >&2; exit 1; }
+
+# Wrapper mode: hand this file to the node, then continue against the guest.
+if [ -n "$NODE" ]; then
+  [ -f "$0" ] || die "NODE=... needs this script as a file; run it from the repo"
+  vars="VMID='$VMID' NAME='$NAME' IP='$IP' DNS='$DNS' BRIDGE='$BRIDGE' STORE='$STORE'"
+  vars="$vars MEMORY='$MEMORY' CORES='$CORES' DISK='$DISK' CIUSER='$CIUSER'"
+  vars="$vars RELEASE='$RELEASE' BUILD='$BUILD' SSHKEYS='$SSHKEYS'"
+  # tee so the node's progress is visible while still being parsed here.
+  out=$(ssh "$NODE" "$vars bash -s" <"$0" | tee /dev/stderr)
+  guest_ip=$(printf '%s\n' "$out" | sed -n 's/^GUEST_IP=//p' | tail -1)
+  if [ "$BOOTSTRAP" = "0" ]; then
+    [ -n "$guest_ip" ] && echo "guest address: $guest_ip"
+    exit 0
+  fi
+  [ -n "$guest_ip" ] || die "the node reported no guest address; run bootstrap-devbox.sh by hand"
+  exec "$(dirname "$0")/bootstrap-devbox.sh" --remote "$guest_ip"
+fi
+
 fetch() {
   if command -v wget >/dev/null 2>&1; then wget -q -O "$2" "$1"
   else curl -fsSL -o "$2" "$1"; fi
 }
-fetch_stdout() {
-  if command -v wget >/dev/null 2>&1; then wget -q -O - "$1"
-  else curl -fsSL "$1"; fi
-}
-
 [ "$(id -u)" -eq 0 ] || die "run as root on the Proxmox node"
 command -v qm >/dev/null 2>&1 || die "qm not found: this must run on a Proxmox VE node"
 [ -r "$SSHKEYS" ] || die "missing $SSHKEYS; cloud-init uses it for login"
@@ -99,24 +121,6 @@ wait_for_address() {
   return 1
 }
 
-if [ "${BOOTSTRAP:-1}" = "0" ]; then
-  echo "BOOTSTRAP=0: skipping guest setup"
-else
-  GUEST_IP=$(wait_for_address) || die "guest reported no address; run bootstrap-devbox.sh by hand"
-  echo "configuring ${CIUSER}@${GUEST_IP}"
-  # The script is normally streamed over SSH, so it may not sit next to this file.
-  if [ -f "$(dirname "$0")/bootstrap-devbox.sh" ]; then
-    BOOTSTRAP_SRC=$(cat "$(dirname "$0")/bootstrap-devbox.sh")
-  else
-    BOOTSTRAP_SRC=$(fetch_stdout "https://raw.githubusercontent.com/treethought/dotfiles/main/proxmox/bootstrap-devbox.sh")
-  fi
-  # A prefix like FOO=1 before this script never crosses SSH, so the flags the
-  # guest-side script reads are passed inside the remote command instead.
-  remote_cmd="bash -s"
-  if [ -n "${SETUP_TAILSCALE:-}" ]; then remote_cmd="SETUP_TAILSCALE=$SETUP_TAILSCALE $remote_cmd"; fi
-  if [ -n "${TS_AUTHKEY:-}" ]; then remote_cmd="TS_AUTHKEY='${TS_AUTHKEY}' $remote_cmd"; fi
-  printf '%s' "$BOOTSTRAP_SRC" |
-    ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${CIUSER}@${GUEST_IP}" "$remote_cmd"
-fi
-
+addr=$(wait_for_address) || die "guest reported no address; use qm terminal $VMID"
+echo "GUEST_IP=$addr"
 echo "console: qm terminal $VMID"
