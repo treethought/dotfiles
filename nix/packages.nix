@@ -95,5 +95,9 @@ in {
     # remote shells
     mosh
     rsync
+
+    # A session opened from Ghostty arrives with TERM=xterm-ghostty, so any host
+    # it connects to needs this entry to render a prompt.
+    ghostty.terminfo
   ];
 }

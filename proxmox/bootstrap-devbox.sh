@@ -24,10 +24,10 @@ esac
 REPO=${REPO:-https://github.com/treethought/dotfiles.git}
 TARGET=${TARGET:-devbox}             # Home Manager target to apply
 DIR=${DIR:-$HOME/dotfiles}           # clone location
-SSH_KEY=${SSH_KEY:-}                 # key to install (path here); empty generates one on the guest
+SSH_KEY=${SSH_KEY:-}                 # private key to install; empty generates one on the guest
 TS_AUTHKEY=${TS_AUTHKEY:-}           # tailscale auth key; otherwise a login URL is printed
 SETUP_KEY=${SETUP_KEY:-ask}          # ask | 1 | 0
-SKIP_TAILSCALE=${SKIP_TAILSCALE:-0}  # 1 leaves the guest off the tailnet
+SETUP_TAILSCALE=${SETUP_TAILSCALE:-ask}  # ask | 1 | 0
 SETUP_GH=${SETUP_GH:-ask}            # ask | 1 | 0
 
 die() { echo "error: $*" >&2; exit 1; }
@@ -37,11 +37,28 @@ have() { command -v "$1" >/dev/null 2>&1; }
 # else the default. Nothing below this point asks anything, so the same script
 # runs unattended on the guest.
 tty_available() { (: </dev/tty) 2>/dev/null; }
+
+# Read one line. When stdin is the terminal, read it directly so readline owns
+# the terminal; when it is not (the script itself was piped in), take the line
+# from /dev/tty. Mixing the two makes readline echo against the wrong fd.
+read_line() {
+  local prompt=$1 default=${2:-} answer=
+  if [ -t 0 ]; then
+    if [ -n "$default" ]; then read -e -i "$default" -r -p "$prompt " answer || answer=$default
+    else read -e -r -p "$prompt " answer || answer=""; fi
+  else
+    printf '%s ' "$prompt" >&2
+    read -r answer </dev/tty || answer=$default
+  fi
+  REPLY_TEXT=$answer
+}
+
 ask() {
-  local prompt=$1 default=${2:-y} answer=
-  if ! tty_available; then [ "$default" = "y" ]; return; fi
-  if [ "$default" = "y" ]; then printf '%s [Y/n] ' "$prompt"; else printf '%s [y/N] ' "$prompt"; fi
-  read -r answer </dev/tty || answer=
+  local prompt=$1 default=${2:-y} answer= suffix=
+  if ! tty_available && [ ! -t 0 ]; then [ "$default" = "y" ]; return; fi
+  if [ "$default" = "y" ]; then suffix="[Y/n]"; else suffix="[y/N]"; fi
+  read_line "$prompt $suffix"
+  answer=$REPLY_TEXT
   case "$answer" in
     [yY]*) return 0 ;;
     [nN]*) return 1 ;;
@@ -49,14 +66,46 @@ ask() {
   esac
 }
 
+# For string answers. With a terminal it uses readline, so Tab completes paths
+# and the default sits ready to edit; the answer lands in REPLY_TEXT so readline
+# never runs inside a command substitution.
+REPLY_TEXT=
+ask_text() {
+  local prompt=$1 default=${2:-}
+  if ! tty_available && [ ! -t 0 ]; then REPLY_TEXT=$default; return; fi
+  read_line "$prompt" "$default"
+}
+
+# SSH_KEY answers this too: it is the default at the prompt, so pressing enter
+# keeps it, and without a terminal it is used directly.
 if [ "$SETUP_KEY" = "ask" ]; then
-  if ask "Set up an SSH key on this guest?" y; then SETUP_KEY=1; else SETUP_KEY=0; fi
+  ask_text "SSH private key (path, Tab completes; empty generates one; 'skip' for none):" "$SSH_KEY"
+  reply=$REPLY_TEXT
+  case "$reply" in
+    "") SETUP_KEY=1 ;;
+    skip | none | -) SETUP_KEY=0 ;;
+    *)
+      case $reply in "~"*) reply="$HOME${reply#\~}" ;; esac
+      [ -r "$reply" ] || die "not readable: $reply"
+      # The private half is what authenticates; the public one is derived.
+      ssh-keygen -y -f "$reply" >/dev/null 2>&1 ||
+        die "$reply is not a usable private key (pass the private half)"
+      SSH_KEY=$reply
+      SETUP_KEY=1
+      ;;
+  esac
 fi
-if [ "$SKIP_TAILSCALE" != "1" ]; then
-  ask "Join the tailnet?" y || SKIP_TAILSCALE=1
+if [ "$SETUP_TAILSCALE" = "ask" ]; then
+  if ask "Install Tailscale and join the tailnet?" y; then
+    SETUP_TAILSCALE=1
+  else
+    SETUP_TAILSCALE=0
+  fi
 fi
-if [ "$SETUP_GH" = "ask" ]; then
-  if ask "Register the SSH key with GitHub via gh?" n; then SETUP_GH=1; else SETUP_GH=0; fi
+if [ "$SETUP_KEY" = "0" ]; then
+  SETUP_GH=0 # nothing to register
+elif [ "$SETUP_GH" = "ask" ]; then
+  if ask "Register this key with GitHub via gh?" n; then SETUP_GH=1; else SETUP_GH=0; fi
 fi
 
 # --remote streams this file to the guest instead of running it here. Answers
@@ -64,13 +113,13 @@ fi
 if [ -n "$REMOTE" ]; then
   [ -f "$0" ] || die "--remote needs this script as a file; run it from the repo"
 
-  forward="SETUP_KEY=$SETUP_KEY SKIP_TAILSCALE=$SKIP_TAILSCALE SETUP_GH=$SETUP_GH"
+  forward="SETUP_KEY=$SETUP_KEY SETUP_TAILSCALE=$SETUP_TAILSCALE SETUP_GH=$SETUP_GH"
   if [ -n "$TS_AUTHKEY" ]; then forward="$forward TS_AUTHKEY='$TS_AUTHKEY'"; fi
 
   # A key can only be read where this runs, so copy it over and point the guest
   # at the copy, then remove it once the run ends.
   key_copy=
-  if [ -n "$SSH_KEY" ]; then
+  if [ -n "$SSH_KEY" ] && [ "$SETUP_KEY" = "1" ]; then
     [ -r "$SSH_KEY" ] || die "SSH_KEY is not readable: $SSH_KEY"
     key_copy="/tmp/bootstrap-key.$$"
     scp -q "$SSH_KEY" "$REMOTE:$key_copy"
@@ -114,7 +163,7 @@ if ! git pull --ff-only; then
 fi
 
 # Generate the shell profile and packages, then link the plain config files.
-echo "applying $TARGET"
+echo "applying the $TARGET target"
 nix run home-manager/master -- switch --flake ".#$TARGET"
 ./install.sh
 
@@ -222,7 +271,7 @@ if [ "$SETUP_KEY" = "1" ]; then
   prepare_ssh
   setup_ssh_key
 fi
-[ "$SKIP_TAILSCALE" != "1" ] && join_tailnet
+[ "$SETUP_TAILSCALE" = "1" ] && join_tailnet
 [ "$SETUP_GH" = "1" ] && register_git_key
 
 echo "done: $(hostname -s) is on $TARGET"

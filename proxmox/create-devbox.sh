@@ -113,7 +113,7 @@ else
   # A prefix like FOO=1 before this script never crosses SSH, so the flags the
   # guest-side script reads are passed inside the remote command instead.
   remote_cmd="bash -s"
-  if [ "${SKIP_TAILSCALE:-0}" = "1" ]; then remote_cmd="SKIP_TAILSCALE=1 $remote_cmd"; fi
+  if [ -n "${SETUP_TAILSCALE:-}" ]; then remote_cmd="SETUP_TAILSCALE=$SETUP_TAILSCALE $remote_cmd"; fi
   if [ -n "${TS_AUTHKEY:-}" ]; then remote_cmd="TS_AUTHKEY='${TS_AUTHKEY}' $remote_cmd"; fi
   printf '%s' "$BOOTSTRAP_SRC" |
     ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${CIUSER}@${GUEST_IP}" "$remote_cmd"

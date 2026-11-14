@@ -220,8 +220,9 @@ TS_AUTHKEY=tskey-auth-... ./proxmox/bootstrap-devbox.sh --remote devbox
 ```
 
 The optional steps are questions, asked before any work starts on whichever machine runs the
-script: SSH key (default yes), join the tailnet (default yes), register the key with gh (default
-no). The answers are handed to the guest as variables, so `--remote` needs no terminal there,
+script: SSH private key (a path, with Tab completion; empty to generate one; `skip` for none), install Tailscale and
+join the tailnet (default yes),
+register the key with gh (default no). The answers are handed to the guest as variables, so `--remote` needs no terminal there,
 and `bash -s < script` applies the defaults.
 
 Fedora needs `git` and `curl` first (`sudo dnf install -y git curl`); the script checks and

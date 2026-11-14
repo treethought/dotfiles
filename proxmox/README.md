@@ -38,13 +38,15 @@ repeats steps that are already done.
 version), `CIUSER`, `SSHKEYS`, `BOOTSTRAP` (0 to stop after the VM).
 
 `bootstrap-devbox.sh`: `TARGET` (devbox), `REPO`, `DIR`, `TS_AUTHKEY` (skip the browser login),
-`SSH_KEY` (path on the machine running the script to an existing private key), and
-`SETUP_KEY`, `SKIP_TAILSCALE`, `SETUP_GH`, each `1` or `0` to answer a question without asking.
+`SSH_KEY` (path on the machine running the script to an existing private key, also offered
+as the prompt's default; its public half is derived or copied alongside), and `SETUP_KEY`, `SETUP_TAILSCALE`, `SETUP_GH`, each `1` or `0`
+to answer a question without asking.
 
-The optional steps are questions: SSH key (default yes), join the tailnet (default yes),
-register the key with GitHub (default no). They are asked before any work starts, on whichever
-machine runs the script, and the answers are handed to the guest as variables, so `--remote`
-needs no terminal on the guest. Without a terminal the defaults apply.
+The optional steps are questions: SSH private key (a path, with Tab completion when run from a
+terminal; empty to generate one; `skip` for none), install Tailscale and join the tailnet
+(default yes), register the key with GitHub via gh (default no). They are asked before any work
+starts, on whichever machine runs the script, and the answers are handed to the guest as
+variables, so `--remote` needs no terminal there. Without a terminal the defaults apply.
 
 Subnet and gateway come from the node itself, so nothing here carries a site-specific address.
 
@@ -69,7 +71,7 @@ The URL rewrite that sends https GitHub URLs over SSH is machine-local (in
 Bootstrap one guest, clean it, then treat it as a template:
 
 ```sh
-ssh treethought@<guest-ip> 'SKIP_TAILSCALE=1 bash -s' < proxmox/bootstrap-devbox.sh
+SETUP_TAILSCALE=0 ./proxmox/bootstrap-devbox.sh --remote <guest>
 ```
 
 Then inside it:
