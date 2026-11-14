@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # Create a headless Fedora dev VM.
 #
-#   NODE=pve ./proxmox/create-devbox.sh              # create, then bootstrap the guest
-#   NODE=pve BOOTSTRAP=0 ./proxmox/create-devbox.sh   # create only
-#   ./proxmox/create-devbox.sh                        # run on the node itself
+#   NODE=pve ./proxmox/create-devbox.sh [name] [vmid]   # create, then bootstrap
+#   NODE=pve BOOTSTRAP=0 ./proxmox/create-devbox.sh      # create only
+#   ./proxmox/create-devbox.sh                           # run on the node itself
 #
-# The first form only needs ssh access to the node: it streams this file there,
-# then talks to the guest directly, so the guest setup and its questions happen
-# on the machine you started from. The guest takes a DHCP lease unless IP is
-# set; subnet and gateway are read from the node.
+# NODE is the machine to create the VM on, so it is only needed when this runs
+# somewhere else. Without a vmid the node picks the lowest free one. The guest
+# takes a DHCP lease unless IP is set; subnet and gateway come from the node.
 set -euo pipefail
 
-VMID=${VMID:-201}
-NAME=${NAME:-devbox}
+VMID=${2:-${VMID:-}}
+NAME=${1:-${NAME:-devbox}}
 IP=${IP:-}
 DNS=${DNS:-1.1.1.1}
 BRIDGE=${BRIDGE:-vmbr0}
@@ -54,9 +53,16 @@ fetch() {
   if command -v wget >/dev/null 2>&1; then wget -q -O "$2" "$1"
   else curl -fsSL -o "$2" "$1"; fi
 }
-[ "$(id -u)" -eq 0 ] || die "run as root on the Proxmox node"
-command -v qm >/dev/null 2>&1 || die "qm not found: this must run on a Proxmox VE node"
+if [ "$(id -u)" -ne 0 ] || ! command -v qm >/dev/null 2>&1; then
+  die "this half runs on a Proxmox node; from elsewhere use NODE=<host> $0"
+fi
 [ -r "$SSHKEYS" ] || die "missing $SSHKEYS; cloud-init uses it for login"
+
+# Without an explicit vmid, take the next one after the highest in use.
+if [ -z "$VMID" ]; then
+  VMID=$(qm list | awk 'NR > 1 && $1 ~ /^[0-9]+$/ {if ($1 > max) max = $1}
+    END {print (max < 100) ? 100 : max + 1}')
+fi
 qm status "$VMID" >/dev/null 2>&1 && die "VM $VMID already exists"
 
 # Derive the network from the bridge: the node already knows its prefix and
@@ -122,5 +128,6 @@ wait_for_address() {
 }
 
 addr=$(wait_for_address) || die "guest reported no address; use qm terminal $VMID"
+echo "VMID=$VMID"
 echo "GUEST_IP=$addr"
 echo "console: qm terminal $VMID"

@@ -139,7 +139,8 @@ agents, and keep long-lived zellij sessions that survive moving between laptops.
 CLI tooling and shell as the laptop, without `nix/desktop.nix` and the audio, Flatpak, and font
 modules it pulls in. `nix/README.md` explains the layout.
 
-Create it with `proxmox/create-devbox.sh`, run from the laptop with `NODE=pve`. It streams itself
+Create it with `proxmox/create-devbox.sh <name> [vmid]`, run from the laptop with `NODE=pve`. It
+streams itself
 to the node, downloads the Fedora Cloud Base Generic qcow2 if needed, verifies its checksum,
 creates the VM, imports the disk as `scsi0`, attaches a cloud-init drive, starts it, reads the
 guest address from the agent, and then runs the bootstrap against the guest from here:

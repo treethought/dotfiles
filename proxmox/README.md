@@ -10,10 +10,11 @@ Two scripts: one builds the VM on the node, one configures the guest inside.
 ## Whole flow
 
 ```sh
-NODE=pve ./proxmox/create-devbox.sh
+NODE=pve ./proxmox/create-devbox.sh [name] [vmid]
 ```
 
-`NODE` names a host with root SSH access, so this works from the laptop. It streams
+The name defaults to `devbox` and the vmid to the next free one on the node. `NODE` names a
+host with root SSH access, so this works from the laptop. It streams
 `create-devbox.sh` to that node, reads the guest address back from it, and then runs
 `bootstrap-devbox.sh` against the guest directly. The node is not involved after the VM exists,
 and the guest questions are asked where you started the script.
