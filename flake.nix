@@ -34,6 +34,7 @@
           nix-flatpak.homeManagerModules.nix-flatpak
           ./nix/fedora.nix
           ./nix/desktop.nix
+          ./nix/ops.nix
         ];
         # Work Mac:                 home-manager switch --flake ~/dotfiles#mac
         # No desktop module yet: it is Wayland-fedora specific today.

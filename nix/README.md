@@ -15,11 +15,12 @@ Each file is one capability; machines are composed from them in `flake.nix`.
 | `audio.nix` | PipeWire config files and the internal-mic reset unit | `desktop.nix` |
 | `flatpak.nix` | Flathub applications | `desktop.nix` |
 | `fonts.nix` | font packages | `desktop.nix` |
+| `ops.nix` | cloud and cluster tooling (argocd, pulumi); heavy, and not cached for the current pin | `framework` |
 
 ## Targets
 
 ```
-framework = common + fedora + desktop     (plus the nix-flatpak module)
+framework = common + fedora + desktop + ops   (plus the nix-flatpak module)
 devbox    = common + fedora
 mac       = common + darwin
 ```
@@ -29,6 +30,7 @@ mac       = common + darwin
 - Usable from a terminal anywhere (CLI tools, languages, `mosh`, `rsync`): `packages.nix`
 - Needs a display, sound, or a desktop session: `desktop.nix`
 - Needs root, a distro path, or distro integration: `fedora.nix`, `darwin.nix`, or dnf/Homebrew
+- Heavy tooling only one machine needs: `ops.nix` (or another role module), not `packages.nix`
 - A GUI application that ships as Flatpak: `flatpak.nix`
 
 ## Adding a target

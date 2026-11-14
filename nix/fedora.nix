@@ -1,7 +1,7 @@
 # Fedora integration, shared by the laptop and the dev VMs. Only what depends on
 # the distro living outside Nix: where the home directory is, and the fixes Nix
 # programs need when /usr belongs to dnf.
-{ config, ... }:
+{ config, pkgs, ... }:
 {
   home.homeDirectory = "/home/treethought";
 
@@ -12,9 +12,12 @@
   # command it prints.
   targets.genericLinux.enable = true;
 
-  # genericLinux exports TERMINFO_DIRS through the systemd user session, which a
-  # plain SSH login never sees. Without it ncurses cannot find terminfo the Nix
-  # profile ships, so a terminal like Ghostty's has no key bindings (backspace
-  # among them) and readline misbehaves.
+  # Sessions from Ghostty arrive with TERM=xterm-ghostty, which needs an entry on
+  # the host being connected to, or zsh and readline lose key bindings such as
+  # backspace.
+  home.packages = [ pkgs.ghostty.terminfo ];
+
+  # genericLinux exports this through the systemd user session only, which an SSH
+  # login never sees, so the profile's terminfo would otherwise be invisible.
   home.sessionVariables.TERMINFO_DIRS = "${config.home.profileDirectory}/share/terminfo:/usr/share/terminfo:/lib/terminfo:/etc/terminfo";
 }
