@@ -121,6 +121,14 @@
         bindkey -M viins '^[[B' down-line-or-beginning-search
         bindkey -M vicmd 'k' up-line-or-beginning-search
         bindkey -M vicmd 'j' down-line-or-beginning-search
+
+        # Some terminal definitions and plugins leave only the two output
+        # sequences here, so the paste markers are parsed as keystrokes and
+        # vi-mode's ~ toggles the case of the last pasted character. Name all
+        # four so pastes are recognised regardless.
+        zle_bracketed_paste=(
+          $'\e[?2004h' $'\e[?2004l' $'\e[200~' $'\e[201~'
+        )
       }
 
       if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
