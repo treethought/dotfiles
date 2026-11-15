@@ -12,6 +12,7 @@ set -euo pipefail
 
 TARGET=${1:-}
 NODE=${NODE:-}
+DEFAULT_NODE=${DEFAULT_NODE:-root@pve}
 YES=${YES:-0}
 CIUSER=${CIUSER:-treethought}
 SETUP_TAILSCALE=${SETUP_TAILSCALE:-ask} # ask | 1 | 0, logout from the tailnet
@@ -25,7 +26,7 @@ node() { if [ -n "$NODE" ]; then ssh "$NODE" "$@"; else "$@"; fi; }
 
 # qm lives on the node, so this needs NODE when run anywhere else.
 if [ -z "$NODE" ] && ! have qm; then
-  die "qm is not on this machine; set NODE=<proxmox host>, for example NODE=root@pve $0 $TARGET"
+  NODE=$DEFAULT_NODE
 fi
 
 tty_available() { (: </dev/tty) 2>/dev/null; }

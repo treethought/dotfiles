@@ -7,36 +7,77 @@ Two scripts: one builds the VM on the node, one configures the guest inside.
 | `create-devbox.sh` | the node, as root | downloads the Fedora cloud image, checks it, creates the VM, imports the disk, attaches cloud-init, starts it, then pipes the bootstrap into the guest over SSH |
 | `bootstrap-devbox.sh` | inside the guest, as your user | installs Nix, clones the repo, applies the Home Manager target, links the configs, joins the tailnet |
 | `destroy-devbox.sh` | anywhere with ssh to the node | logs the guest out of the tailnet, optionally deletes its key from GitHub, then destroys the VM and its disks |
+| `template-devbox.sh` | anywhere with ssh to the node | strips a guest's identity (cloud-init, machine-id, host keys, tailnet login, history) and marks it as a template |
 
 ## Whole flow
 
 ```sh
-NODE=pve ./proxmox/create-devbox.sh [name] [vmid]
+./proxmox/create-devbox.sh [--from-template ID] [--linked] [name] [vmid]
 ```
 
-The name defaults to `devbox` and the vmid to the next free one on the node. `NODE` names a
-host with root SSH access, so this works from the laptop. It streams
-`create-devbox.sh` to that node, reads the guest address back from it, and then runs
-`bootstrap-devbox.sh` against the guest directly. The node is not involved after the VM exists,
-and the guest questions are asked where you started the script.
+The name defaults to `devbox` and the vmid to the next one above the highest in use. `NODE`
+names a host with root SSH access and defaults to `root@pve`, so this works from the laptop; on a
+node it is ignored and everything runs locally. The script streams itself to that node, reads the
+guest address back from it, then runs `bootstrap-devbox.sh` against the guest directly, so the
+node is not involved after the VM exists and the questions are asked where you started.
 
-Without `NODE` it runs as the node-side script: root, `qm`, and images already present.
+When it finishes it prints how to reach the guest:
+
+```
+connect:
+  ssh treethought@192.168.86.53
+  ssh treethought@devbox3
+```
+
+The tailnet form appears only once MagicDNS resolves it, so a run with `SETUP_TAILSCALE=0` shows
+the address alone.
 
 ## Running them separately
 
 ```sh
-NODE=pve BOOTSTRAP=0 ./proxmox/create-devbox.sh   # VM only
+BOOTSTRAP=0 ./proxmox/create-devbox.sh             # VM only
 ./proxmox/bootstrap-devbox.sh --remote <guest-ip> # configure an existing guest
 ```
 
 Re-running the bootstrap is how a guest is updated: it pulls, re-applies the target, and only
 repeats steps that are already done.
 
+## Templates
+
+A template is a bootstrapped guest with its identity stripped, so a new VM takes
+seconds instead of a cold install. Build it from a guest that carries neither a
+tailnet login nor secrets, since every clone inherits both:
+
+```sh
+SETUP_TAILSCALE=0 SETUP_SECRETS=0 ./proxmox/create-devbox.sh tmpl
+./proxmox/template-devbox.sh tmpl
+```
+
+Then clone, re-applying the new name and keys, and letting the normal bootstrap
+run the identity steps:
+
+```sh
+./proxmox/create-devbox.sh --from-template 101 devbox3
+./proxmox/create-devbox.sh --from-template 101 --linked devbox3
+```
+
+`--linked` shares blocks with the template instead of copying them, and that is the difference
+between seconds and minutes: a full clone copies the whole virtual disk (48 GiB on a default
+build, of which about 5 GiB is data), while a linked clone is a thin snapshot. Linked clones do
+depend on the template, so do not modify or delete it while they exist.
+
+`CIUPGRADE` defaults to `0`, so cloud-init does not re-run the image's package upgrade on every
+clone; set `CIUPGRADE=1` when you want that. Rebuild the template whenever the configuration
+changes, since a stale template silently gives you an old machine.
+
+If you prefer full clones, build the template with a smaller `DISK`; the copy cost scales with the
+virtual size, not with how much is in use.
+
 ## Destroying a guest
 
 ```sh
-NODE=root@pve ./proxmox/destroy-devbox.sh devbox2
-NODE=root@pve ./proxmox/destroy-devbox.sh 202
+./proxmox/destroy-devbox.sh devbox2
+./proxmox/destroy-devbox.sh 202
 ```
 
 The cleanup runs before the VM goes away, because both steps need it alive: `tailscale logout`

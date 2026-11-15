@@ -1,17 +1,55 @@
 #!/usr/bin/env bash
 # Create a headless Fedora dev VM.
 #
-#   NODE=pve ./proxmox/create-devbox.sh [name] [vmid]   # create, then bootstrap
-#   NODE=pve BOOTSTRAP=0 ./proxmox/create-devbox.sh      # create only
-#   ./proxmox/create-devbox.sh                           # run on the node itself
+#   NODE=pve ./proxmox/create-devbox.sh [--from-template ID] [--linked] [name] [vmid]
 #
-# NODE is the machine to create the VM on, so it is only needed when this runs
-# somewhere else. Without a vmid the node picks the lowest free one. The guest
-# takes a DHCP lease unless IP is set; subnet and gateway come from the node.
+# Without --from-template the disk comes from the Fedora cloud image. With it the
+# VM is cloned from a template, which is much faster because the Nix store and
+# the applied configuration are already on its disk; --linked shares blocks with
+# the template instead of copying them.
+#
+# NODE is the machine to create the VM on. It defaults to root@pve when qm is not
+# available locally, and is ignored on a node. Without a vmid the node takes the
+# next id above the highest in use. The guest takes a DHCP lease unless IP is
+# set; subnet and gateway come from the node. When it finishes, the script prints
+# how to reach the guest by address and, once it has joined, by tailnet name.
 set -euo pipefail
 
-VMID=${2:-${VMID:-}}
-NAME=${1:-${NAME:-devbox}}
+die() { echo "error: $*" >&2; exit 1; }
+
+name_arg=
+vmid_arg=
+while [ $# -gt 0 ]; do
+  case $1 in
+    --from-template)
+      FROM_TEMPLATE=${2:-}
+      [ -n "$FROM_TEMPLATE" ] || die "--from-template needs a template id"
+      shift 2
+      ;;
+    --linked)
+      LINKED=1
+      shift
+      ;;
+    -h | --help)
+      sed -n '2,13p' "$0"
+      exit 0
+      ;;
+    -*) die "unknown option $1" ;;
+    *)
+      if [ -z "$name_arg" ]; then
+        name_arg=$1
+      elif [ -z "$vmid_arg" ]; then
+        vmid_arg=$1
+      else
+        die "unexpected argument $1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+VMID=${vmid_arg:-${VMID:-}}
+NAME=${name_arg:-${NAME:-devbox}}
 IP=${IP:-}
 DNS=${DNS:-1.1.1.1}
 BRIDGE=${BRIDGE:-vmbr0}
@@ -28,9 +66,16 @@ IMAGE="Fedora-Cloud-Base-Generic-${RELEASE}-${BUILD}.x86_64.qcow2"
 BASE_URL="https://download.fedoraproject.org/pub/fedora/linux/releases/${RELEASE}/Cloud/x86_64/images"
 
 NODE=${NODE:-}
+DEFAULT_NODE=${DEFAULT_NODE:-root@pve}   # used when qm is not on this machine
 BOOTSTRAP=${BOOTSTRAP:-1}
+FROM_TEMPLATE=${FROM_TEMPLATE:-}   # clone this template id instead of importing the image
+LINKED=${LINKED:-0}                # 1 makes a linked clone, sharing blocks with the template
+CIUPGRADE=${CIUPGRADE:-0}          # 1 lets cloud-init upgrade packages on first boot
 
-die() { echo "error: $*" >&2; exit 1; }
+# On a node the commands run here; anywhere else, assume the node over ssh.
+if [ -z "$NODE" ] && ! command -v qm >/dev/null 2>&1; then
+  NODE=$DEFAULT_NODE
+fi
 
 # Wrapper mode: hand this file to the node, then continue against the guest.
 if [ -n "$NODE" ]; then
@@ -38,6 +83,7 @@ if [ -n "$NODE" ]; then
   vars="VMID='$VMID' NAME='$NAME' IP='$IP' DNS='$DNS' BRIDGE='$BRIDGE' STORE='$STORE'"
   vars="$vars MEMORY='$MEMORY' CORES='$CORES' DISK='$DISK' CIUSER='$CIUSER'"
   vars="$vars RELEASE='$RELEASE' BUILD='$BUILD' SSHKEYS='$SSHKEYS'"
+  vars="$vars FROM_TEMPLATE='$FROM_TEMPLATE' LINKED='$LINKED' CIUPGRADE='$CIUPGRADE'"
   # tee so the node's progress is visible while still being parsed here.
   out=$(ssh "$NODE" "$vars bash -s" <"$0" | tee /dev/stderr)
   guest_ip=$(printf '%s\n' "$out" | sed -n 's/^GUEST_IP=//p' | tail -1)
@@ -46,7 +92,19 @@ if [ -n "$NODE" ]; then
     exit 0
   fi
   [ -n "$guest_ip" ] || die "the node reported no guest address; run bootstrap-devbox.sh by hand"
-  exec "$(dirname "$0")/bootstrap-devbox.sh" --remote "$guest_ip"
+  "$(dirname "$0")/bootstrap-devbox.sh" --remote "$guest_ip"
+  rc=$?
+
+  echo
+  echo "connect:"
+  echo "  ssh ${CIUSER}@${guest_ip}"
+  # MagicDNS answers only once the guest has joined the tailnet.
+  if getent hosts "$NAME" >/dev/null 2>&1; then
+    echo "  ssh ${CIUSER}@${NAME}"
+  else
+    echo "  (tailnet name $NAME will resolve after it joins: ssh ${CIUSER}@${NAME})"
+  fi
+  exit "$rc"
 fi
 
 fetch() {
@@ -76,6 +134,47 @@ GW=${GW:-$(ip -4 route show default dev "$BRIDGE" |
 [ -n "$GW" ] || die "no default route on $BRIDGE; pass GW=<addr>"
 if [ -n "$IP" ]; then NETCONF="ip=${IP}/${PREFIX},gw=${GW}"; else NETCONF="ip=dhcp"; fi
 
+# Wait for the agent to report an address, then hand off to the guest-side
+# script. This is why the guest keeps qemu-guest-agent installed: with DHCP
+# there is no address to look up anywhere else.
+wait_for_address() {
+  local addr
+  # Without the agent this can only time out, so say so instead of waiting.
+  qm config "$VMID" 2>/dev/null | grep -q '^agent: enabled=1' ||
+    die "guest agent is off for $VMID; run: qm set $VMID --agent enabled=1 and reboot it"
+  for _ in $(seq 1 60); do
+    addr=$(qm guest cmd "$VMID" network-get-interfaces 2>/dev/null |
+      awk -F'"' '/"ip-address" *: *"192|"ip-address" *: *"10\.|"ip-address" *: *"172\./ {print $4; exit}')
+    if [ -n "$addr" ]; then printf '%s' "$addr"; return 0; fi
+    sleep 5
+  done
+  return 1
+}
+
+# From a template the disk already holds the store and the configuration, so the
+# clone is seconds rather than a cold install. A linked clone shares blocks with
+# the template until each guest writes.
+if [ -n "$FROM_TEMPLATE" ]; then
+  echo "cloning $FROM_TEMPLATE to $VMID"
+  if [ "$LINKED" = "1" ]; then
+    qm clone "$FROM_TEMPLATE" "$VMID" --name "$NAME"
+  else
+    qm clone "$FROM_TEMPLATE" "$VMID" --name "$NAME" --full
+  fi
+  # The agent is how the address is discovered afterwards, and the template may
+  # predate that being set, so normalise it on the clone.
+  qm set "$VMID" --agent enabled=1 --onboot 1 --serial0 socket \
+    --ciuser "$CIUSER" --sshkeys "$SSHKEYS" --ciupgrade "$CIUPGRADE" \
+    --ipconfig0 "$NETCONF" --nameserver "$DNS"
+  qm start "$VMID"
+  echo "started $NAME ($VMID)"
+  addr=$(wait_for_address) || die "guest reported no address; use qm terminal $VMID"
+  echo "VMID=$VMID"
+  echo "GUEST_IP=$addr"
+  echo "console: qm terminal $VMID"
+  exit 0
+fi
+
 # The cloud image is the whole point of this path: cloud-init supplies the user,
 # keys, and network, so the guest needs no interactive install.
 if [ ! -f "${ISO_DIR}/${IMAGE}" ]; then
@@ -104,7 +203,7 @@ VOL=$(qm config "$VMID" | awk -F': ' '/^unused0:/ {print $2}')
 qm set "$VMID" --scsi0 "$VOL" --boot order=scsi0
 
 qm set "$VMID" --ide2 "${STORE}:cloudinit"
-qm set "$VMID" --ciuser "$CIUSER" --sshkeys "$SSHKEYS" \
+qm set "$VMID" --ciuser "$CIUSER" --sshkeys "$SSHKEYS" --ciupgrade "$CIUPGRADE" \
   --ipconfig0 "$NETCONF" --nameserver "$DNS"
 
 # The cloud image ships a small root fs; cloud-init grows it to the disk on boot.
@@ -113,21 +212,9 @@ qm resize "$VMID" scsi0 "$DISK"
 qm start "$VMID"
 echo "started $NAME ($VMID)"
 
-# Wait for the agent to report an address, then hand off to the guest-side
-# script. This is why the guest keeps qemu-guest-agent installed: with DHCP
-# there is no address to look up anywhere else.
-wait_for_address() {
-  local addr
-  for _ in $(seq 1 60); do
-    addr=$(qm guest cmd "$VMID" network-get-interfaces 2>/dev/null |
-      awk -F'"' '/"ip-address" *: *"192|"ip-address" *: *"10\.|"ip-address" *: *"172\./ {print $4; exit}')
-    if [ -n "$addr" ]; then printf '%s' "$addr"; return 0; fi
-    sleep 5
-  done
-  return 1
-}
 
 addr=$(wait_for_address) || die "guest reported no address; use qm terminal $VMID"
 echo "VMID=$VMID"
 echo "GUEST_IP=$addr"
+echo "connect: ssh ${CIUSER}@${addr}"
 echo "console: qm terminal $VMID"
