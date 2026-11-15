@@ -29,6 +29,38 @@ home-manager switch --flake ~/dotfiles#mac
 home-manager switch --flake ~/dotfiles#devbox
 ```
 
+## Updating
+
+Three layers, in order: this repository's configuration, the tools it installs outside Nix, then the
+host's own packages.
+
+```sh
+# configuration from this repo
+home-manager switch --flake ~/dotfiles#framework
+./install.sh                          # only when the set of linked paths changed
+bin/install-tools.sh                  # polytoken, roast
+
+# newer packages, when you want them: commit the updated flake.lock afterwards
+nix flake update && home-manager switch --flake ~/dotfiles#framework
+
+# the Fedora host itself
+sudo dnf upgrade --refresh
+fwupdmgr refresh --force && fwupdmgr update      # Framework firmware
+```
+
+Flatpak applications update weekly on their own (`nix/flatpak.nix`), so they need no step here.
+Linked files (nvim, zellij, git, crush) apply as soon as the checkout changes; only Nix changes need
+the switch.
+
+Guests are updated with one command, which pulls, switches, relinks, and installs tools in a single
+run:
+
+```sh
+./proxmox/update-devbox.sh devbox          # add --git/--repos/--agents/--secrets when needed
+```
+
+`docs/fedora.md` has the host-side details and `proxmox/README.md` the guest ones.
+
 ## Configuration ownership
 
 | Area | Location |

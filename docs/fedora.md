@@ -28,6 +28,21 @@ tool is missing.
 ./bin/install-tools.sh
 ```
 
+## Updates
+
+System packages belong to dnf, so they are not part of a Home Manager switch. The kernel and drivers
+only change here, and a reboot picks them up:
+
+```sh
+sudo dnf upgrade --refresh        # packages, kernel, drivers
+sudo dnf autoremove               # after a kernel or two
+fwupdmgr refresh --force && fwupdmgr update
+```
+
+Nix packages are separate: `nix flake update` then a switch, which is what `README.md` covers.
+Flatpak applications update weekly by themselves (`nix/flatpak.nix`). A guest is updated from the
+workstation with `proxmox/update-devbox.sh`, and the Fedora packages inside it with `dnf` over ssh.
+
 ## Manual steps that need root
 
 - `/etc/bluetooth/main.conf`: `DeviceID = bluetooth:004C:0000:0000` under `[General]`. Then
