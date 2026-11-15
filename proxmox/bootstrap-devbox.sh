@@ -31,6 +31,9 @@ SETUP_TAILSCALE=${SETUP_TAILSCALE:-ask}  # ask | 1 | 0
 SETUP_GH=${SETUP_GH:-ask}            # ask | 1 | 0
 SETUP_SECRETS=${SETUP_SECRETS:-ask}  # ask | 1 | 0, copy private/secrets.zsh over
 SETUP_OBSIDIAN=${SETUP_OBSIDIAN:-ask}  # ask | 1 | 0, log in and start Obsidian Sync
+SETUP_AGENTS=${SETUP_AGENTS:-ask}    # ask | 1 | 0, copy the agent directory over
+AGENTS_DIR=${AGENTS_DIR:-$HOME/.agents}  # source, on the machine running this
+AGENTS_MD=${AGENTS_MD:-$HOME/AGENTS.md}   # global agent guidance
 SECRETS_FILE=${SECRETS_FILE:-private/secrets.zsh}  # path inside the repo
 
 die() { echo "error: $*" >&2; exit 1; }
@@ -110,6 +113,9 @@ fi
 if [ "$SETUP_SECRETS" = "ask" ]; then
   if ask "Copy $SECRETS_FILE to the guest?" n; then SETUP_SECRETS=1; else SETUP_SECRETS=0; fi
 fi
+if [ "$SETUP_AGENTS" = "ask" ]; then
+  if ask "Copy the agent directory and AGENTS.md to the guest?" y; then SETUP_AGENTS=1; else SETUP_AGENTS=0; fi
+fi
 if [ "$SETUP_OBSIDIAN" = "ask" ]; then
   if ask "Set up Obsidian Sync on this guest (needs the secrets above)?" n; then
     SETUP_OBSIDIAN=1
@@ -126,7 +132,7 @@ fi
 
 # Say what was decided, so a default taken by pressing enter is visible.
 onoff() { [ "$1" = "1" ] && echo yes || echo no; }
-echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), obsidian $(onoff "$SETUP_OBSIDIAN"), gh key $(onoff "$SETUP_GH")"
+echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), agents $(onoff "$SETUP_AGENTS"), obsidian $(onoff "$SETUP_OBSIDIAN"), gh key $(onoff "$SETUP_GH")"
 
 # --remote streams this file to the guest instead of running it here. Answers
 # already collected are passed as variables, so the guest side never prompts.
@@ -176,6 +182,24 @@ if [ -n "$REMOTE" ]; then
       echo "no $src to copy" >&2
     fi
   fi
+  # Agents read these at runtime, so copying after the guest is set up keeps the
+  # transfer off the critical path.
+  if [ "$SETUP_AGENTS" = "1" ]; then
+    if [ -d "$AGENTS_DIR" ]; then
+      tar -C "$(dirname "$AGENTS_DIR")" -cf - "$(basename "$AGENTS_DIR")" |
+        ssh "$REMOTE" 'mkdir -p ~ && tar -C ~ -xf -'
+      echo "copied $(basename "$AGENTS_DIR") to the guest"
+    else
+      echo "no $AGENTS_DIR to copy" >&2
+    fi
+    if [ -f "$AGENTS_MD" ]; then
+      scp -q "$AGENTS_MD" "$REMOTE:AGENTS.md"
+      echo "copied $(basename "$AGENTS_MD") to the guest"
+    else
+      echo "no $AGENTS_MD to copy" >&2
+    fi
+  fi
+
   exit
 fi
 

@@ -68,8 +68,9 @@ version), `CIUSER`, `SSHKEYS`, `BOOTSTRAP` (0 to stop after the VM).
 `bootstrap-devbox.sh`: `TARGET` (devbox), `REPO`, `DIR`, `TS_AUTHKEY` (skip the browser login),
 `SSH_KEY` (path on the machine running the script to an existing private key, also offered
 as the prompt's default; its public half is derived or copied alongside), and `SETUP_KEY`,
-`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, `SETUP_OBSIDIAN`, each `1` or `0` to answer a
-question without asking, plus `SECRETS_FILE` to point at a different file.
+`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, `SETUP_AGENTS`, `SETUP_OBSIDIAN`, each `1` or `0`
+to answer a question without asking, plus `SECRETS_FILE`, `AGENTS_DIR`, and `AGENTS_MD` to point
+at different paths.
 
 The optional steps are questions: SSH private key (a path, with Tab completion when run from a
 terminal; empty generates one; `skip` for none), install Tailscale and join the tailnet
