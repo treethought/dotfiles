@@ -41,7 +41,10 @@
         "mac" = mkHome "aarch64-darwin" [ ./nix/darwin.nix ];
         # Headless Fedora dev VM on the Proxmox host:
         #                           home-manager switch --flake ~/dotfiles#devbox
-        "devbox" = mkHome "x86_64-linux" [ ./nix/fedora.nix ];
+        "devbox" = mkHome "x86_64-linux" [
+          ./nix/fedora.nix
+          ./nix/headless.nix
+        ];
       };
     };
 }

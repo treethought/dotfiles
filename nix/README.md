@@ -16,12 +16,13 @@ Each file is one capability; machines are composed from them in `flake.nix`.
 | `flatpak.nix` | Flathub applications | `desktop.nix` |
 | `fonts.nix` | font packages | `desktop.nix` |
 | `ops.nix` | cloud and cluster tooling (argocd, pulumi); heavy, and not cached for the current pin | `framework` |
+| `headless.nix` | tools that only make sense without a display, such as the headless Obsidian Sync client | `devbox` |
 
 ## Targets
 
 ```
 framework = common + fedora + desktop + ops   (plus the nix-flatpak module)
-devbox    = common + fedora
+devbox    = common + fedora + headless
 mac       = common + darwin
 ```
 
