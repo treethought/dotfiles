@@ -35,7 +35,11 @@
 
 [credential "https://github.com"]
 	helper =
-	helper = !/home/treethought/.nix-profile/bin/.gh-wrapped auth git-credential
+	# $HOME, not a literal path: git runs these through a shell, and the
+	# username differs between machines.
+	helper = !$HOME/.nix-profile/bin/.gh-wrapped auth git-credential
 [credential "https://gist.github.com"]
 	helper =
-	helper = !/home/treethought/.nix-profile/bin/.gh-wrapped auth git-credential
+	# $HOME, not a literal path: git runs these through a shell, and the
+	# username differs between machines.
+	helper = !$HOME/.nix-profile/bin/.gh-wrapped auth git-credential
