@@ -134,8 +134,13 @@ fi
 
 # --- apply -------------------------------------------------------------------
 
-have git || die "git is missing; run: sudo dnf install -y git curl"
-have curl || die "curl is missing; run: sudo dnf install -y git curl"
+# The cloud image ships curl but not git, and cloud-init gives the user
+# passwordless root, so install what the rest of this needs.
+if ! have git || ! have curl; then
+  echo "installing git and curl"
+  sudo dnf install -y git curl
+fi
+have git || die "git is still missing; install it with dnf and re-run"
 
 # The upstream installer refuses to run on SELinux, which Fedora enforces, so
 # this uses the same Determinate installer as the laptop.
@@ -256,6 +261,12 @@ register_git_key() {
     echo "gh is not authenticated; the key is not registered."
     echo "run 'gh auth login', then:"
     echo "  gh ssh-key add $pub --type authentication --title $(hostname -s)"
+    return
+  fi
+  # Adding keys needs a scope that gh's default login does not request.
+  if ! gh ssh-key list >/dev/null 2>&1; then
+    echo "gh lacks the public-key scope; grant it once with:"
+    echo "  gh auth refresh -s admin:public_key"
     return
   fi
   # An already-registered key fails the add, so accept it when the fingerprint
