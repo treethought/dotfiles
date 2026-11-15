@@ -14,8 +14,13 @@
 
   # Sessions from Ghostty arrive with TERM=xterm-ghostty, which needs an entry on
   # the host being connected to, or zsh and readline lose key bindings such as
-  # backspace.
-  home.packages = [ pkgs.ghostty.terminfo ];
+  # backspace. Placing it in ~/.terminfo means ncurses finds it without any
+  # environment variable, which matters because lookup happens while the session
+  # variables are still being set.
+  home.file.".terminfo" = {
+    source = "${pkgs.ghostty.terminfo}/share/terminfo";
+    recursive = true;
+  };
 
   # genericLinux exports this through the systemd user session only, which an SSH
   # login never sees, so the profile's terminfo would otherwise be invisible.
