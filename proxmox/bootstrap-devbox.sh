@@ -134,6 +134,15 @@ fi
 
 # --- apply -------------------------------------------------------------------
 
+# cloud-init runs its own package upgrade on first boot and holds the dnf lock,
+# so wait for it rather than sitting on "Waiting for a lock". Reading its state
+# needs root, and the upgrade can leave the status call itself wedged, so the
+# wait is bounded: dnf waits for the lock on its own if it comes to that.
+if have cloud-init; then
+  echo "waiting for cloud-init to finish"
+  timeout 600 sudo cloud-init status --wait >/dev/null 2>&1 || true
+fi
+
 # The cloud image ships curl but not git, and cloud-init gives the user
 # passwordless root, so install what the rest of this needs.
 if ! have git || ! have curl; then
