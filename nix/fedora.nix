@@ -24,5 +24,7 @@
 
   # genericLinux exports this through the systemd user session only, which an SSH
   # login never sees, so the profile's terminfo would otherwise be invisible.
-  home.sessionVariables.TERMINFO_DIRS = "${config.home.profileDirectory}/share/terminfo:/usr/share/terminfo:/lib/terminfo:/etc/terminfo";
+  # Setting the variable replaces ncurses' default list, so ~/.terminfo has to be
+  # named here too or the entry above stops being found.
+  home.sessionVariables.TERMINFO_DIRS = "${config.home.homeDirectory}/.terminfo:${config.home.profileDirectory}/share/terminfo:/usr/share/terminfo:/lib/terminfo:/etc/terminfo";
 }

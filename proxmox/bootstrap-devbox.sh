@@ -29,6 +29,8 @@ TS_AUTHKEY=${TS_AUTHKEY:-}           # tailscale auth key; otherwise a login URL
 SETUP_KEY=${SETUP_KEY:-ask}          # ask | 1 | 0
 SETUP_TAILSCALE=${SETUP_TAILSCALE:-ask}  # ask | 1 | 0
 SETUP_GH=${SETUP_GH:-ask}            # ask | 1 | 0
+SETUP_SECRETS=${SETUP_SECRETS:-ask}  # ask | 1 | 0, copy private/secrets.zsh over
+SECRETS_FILE=${SECRETS_FILE:-private/secrets.zsh}  # path inside the repo
 
 die() { echo "error: $*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -102,11 +104,21 @@ if [ "$SETUP_TAILSCALE" = "ask" ]; then
     SETUP_TAILSCALE=0
   fi
 fi
+# Secrets are a deliberate copy, not part of the install: a guest without them
+# simply cannot reach a provider.
+if [ "$SETUP_SECRETS" = "ask" ]; then
+  if ask "Copy $SECRETS_FILE to the guest?" n; then SETUP_SECRETS=1; else SETUP_SECRETS=0; fi
+fi
+
 if [ "$SETUP_KEY" = "0" ]; then
   SETUP_GH=0 # nothing to register
 elif [ "$SETUP_GH" = "ask" ]; then
   if ask "Register this key with GitHub via gh?" n; then SETUP_GH=1; else SETUP_GH=0; fi
 fi
+
+# Say what was decided, so a default taken by pressing enter is visible.
+onoff() { [ "$1" = "1" ] && echo yes || echo no; }
+echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), gh key $(onoff "$SETUP_GH")"
 
 # --remote streams this file to the guest instead of running it here. Answers
 # already collected are passed as variables, so the guest side never prompts.
@@ -129,6 +141,19 @@ if [ -n "$REMOTE" ]; then
 
   ssh "$REMOTE" "$forward bash -s" <"$0"
   if [ -n "$key_copy" ]; then ssh "$REMOTE" "rm -f $key_copy $key_copy.pub"; fi
+
+  # The clone exists by now, so there is somewhere to put the file.
+  if [ "$SETUP_SECRETS" = "1" ]; then
+    src="$(dirname "$0")/../$SECRETS_FILE"
+    if [ -r "$src" ]; then
+      ssh "$REMOTE" 'mkdir -p ~/dotfiles/private'
+      scp -q "$src" "$REMOTE:dotfiles/private/secrets.zsh"
+      ssh "$REMOTE" 'chmod 600 ~/dotfiles/private/secrets.zsh'
+      echo "copied $SECRETS_FILE to the guest"
+    else
+      echo "no $src to copy" >&2
+    fi
+  fi
   exit
 fi
 
@@ -293,5 +318,10 @@ if [ "$SETUP_KEY" = "1" ]; then
 fi
 [ "$SETUP_TAILSCALE" = "1" ] && join_tailnet
 [ "$SETUP_GH" = "1" ] && register_git_key
+
+if [ "$SETUP_SECRETS" = "1" ] && [ ! -r "$DIR/$SECRETS_FILE" ]; then
+  echo "note: $DIR/$SECRETS_FILE is missing; copy it from the workstation for the"
+  echo "      agent tools to reach a provider"
+fi
 
 echo "done: $(hostname -s) is on $TARGET"

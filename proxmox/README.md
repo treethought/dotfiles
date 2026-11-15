@@ -56,14 +56,16 @@ version), `CIUSER`, `SSHKEYS`, `BOOTSTRAP` (0 to stop after the VM).
 
 `bootstrap-devbox.sh`: `TARGET` (devbox), `REPO`, `DIR`, `TS_AUTHKEY` (skip the browser login),
 `SSH_KEY` (path on the machine running the script to an existing private key, also offered
-as the prompt's default; its public half is derived or copied alongside), and `SETUP_KEY`, `SETUP_TAILSCALE`, `SETUP_GH`, each `1` or `0`
-to answer a question without asking.
+as the prompt's default; its public half is derived or copied alongside), and `SETUP_KEY`,
+`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, each `1` or `0` to answer a question without
+asking, plus `SECRETS_FILE` to point at a different file.
 
 The optional steps are questions: SSH private key (a path, with Tab completion when run from a
-terminal; empty to generate one; `skip` for none), install Tailscale and join the tailnet
-(default yes), register the key with GitHub via gh (default no). They are asked before any work
-starts, on whichever machine runs the script, and the answers are handed to the guest as
-variables, so `--remote` needs no terminal there. Without a terminal the defaults apply.
+terminal; empty generates one; `skip` for none), install Tailscale and join the tailnet
+(default yes), copy `private/secrets.zsh` to the guest (default no), register the key with
+GitHub via gh (default no). They are asked before any work starts, on whichever machine runs the
+script, and the answers are handed to the guest as variables, so `--remote` needs no terminal
+there. Without a terminal the defaults apply.
 
 Subnet and gateway come from the node itself, so nothing here carries a site-specific address.
 
