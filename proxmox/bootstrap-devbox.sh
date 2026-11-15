@@ -379,18 +379,33 @@ join_tailnet() {
     return
   fi
   # Print the login URL as soon as tailscaled emits it, then keep waiting so the
-  # script ends only once the node is on the tailnet.
+  # script ends only once the node is on the tailnet. tailscale up prints a new
+  # URL when the last one expires, so every distinct URL is printed rather than
+  # only the first: an approval that arrives too late would otherwise leave the
+  # run waiting on a URL nobody has seen. The wait is bounded so a guest that
+  # cannot reach the control plane fails instead of hanging.
   log=$(mktemp)
   sudo tailscale up --hostname "$short" >"$log" 2>&1 &
   pid=$!
-  for _ in $(seq 1 40); do
-    url=$(grep -o 'https://login\.tailscale\.com/[^ ]*' "$log" | head -1 || true)
-    if [ -n "$url" ]; then
+  printed=
+  waited=0
+  limit=${TAILSCALE_WAIT:-900}
+  while kill -0 "$pid" 2>/dev/null; do
+    url=$(grep -o 'https://login\.tailscale\.com/[^ ]*' "$log" | tail -1 || true)
+    if [ -n "$url" ] && [ "$url" != "$printed" ]; then
       echo "approve this node in a browser:"
       echo "  $url"
-      break
+      printed=$url
     fi
-    sleep 0.5
+    if [ "$waited" -ge "$limit" ]; then
+      sudo pkill -f 'tailscale up' 2>/dev/null || kill "$pid" 2>/dev/null || true
+      tail -5 "$log" >&2 || true
+      die "tailscale did not finish within ${limit}s. The node may register after
+  this run if the URL above is still approved; otherwise re-run with
+  SETUP_TAILSCALE=1 once it does, or use TS_AUTHKEY=<key>."
+    fi
+    sleep 1
+    waited=$((waited + 1))
   done
   wait "$pid" || { cat "$log"; die "tailscale login failed"; }
   rm -f "$log"
