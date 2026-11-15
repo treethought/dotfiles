@@ -31,35 +31,57 @@ home-manager switch --flake ~/dotfiles#devbox
 
 ## Updating
 
-Three layers, in order: this repository's configuration, the tools it installs outside Nix, then the
-host's own packages.
+Each layer owns a different thing and they are applied in this order.
+
+### Repository changes
+
+On the machine where you edit, the files are already in place. Anywhere else, pull first.
 
 ```sh
-# configuration from this repo
+git pull --ff-only                      # on a machine that is not where you edit
 home-manager switch --flake ~/dotfiles#framework
-./install.sh                          # only when the set of linked paths changed
-bin/install-tools.sh                  # polytoken, roast
+./install.sh                            # only when the set of linked paths changed
+bin/install-tools.sh                    # polytoken, roast
+```
 
-# newer packages, when you want them: commit the updated flake.lock afterwards
-nix flake update && home-manager switch --flake ~/dotfiles#framework
+Linked files (nvim, zellij, git, crush) take effect as soon as the checkout changes, because they are
+symlinks into it; only Nix changes need the switch. `home-manager generations` lists the previous
+generations and `home-manager --rollback` returns to the last one.
 
-# the Fedora host itself
+### Nix packages
+
+`nix flake update` moves the pinned inputs; the switch rebuilds from them, and `flake.lock` records
+the result, so commit it and every other machine builds the same versions.
+
+```sh
+nix flake update                        # or: nix flake update nixpkgs, for one input
+home-manager switch --flake ~/dotfiles#framework
+git add flake.lock && git commit -m "update flake inputs"
+```
+
+### The Fedora host
+
+Root-owned packages are dnf's business, not Home Manager's:
+
+```sh
 sudo dnf upgrade --refresh
 fwupdmgr refresh --force && fwupdmgr update      # Framework firmware
 ```
 
-Flatpak applications update weekly on their own (`nix/flatpak.nix`), so they need no step here.
-Linked files (nvim, zellij, git, crush) apply as soon as the checkout changes; only Nix changes need
-the switch.
+Flatpak applications update weekly by themselves (`nix/flatpak.nix`). `docs/fedora.md` has the
+host-side detail, including when a reboot is needed.
 
-Guests are updated with one command, which pulls, switches, relinks, and installs tools in a single
-run:
+### Guests
+
+One command pulls, switches, relinks, and installs tools:
 
 ```sh
-./proxmox/update-devbox.sh devbox          # add --git/--repos/--agents/--secrets when needed
+./proxmox/update-devbox.sh devbox          # --git/--repos/--agents/--secrets as needed
+./proxmox/update-devbox.sh devbox --dnf    # also upgrade the guest's Fedora packages
 ```
 
-`docs/fedora.md` has the host-side details and `proxmox/README.md` the guest ones.
+A guest's kernel only changes with `--dnf`, and a new kernel needs a reboot before it is running.
+`proxmox/README.md` has the rest.
 
 ## Configuration ownership
 
