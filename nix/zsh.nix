@@ -142,6 +142,30 @@
       # worktrunk: lets `wt switch` change your shell's directory, plus completions
       eval "$(wt config shell init zsh)"
 
+      # zj <host> [session] [command...]: work in zellij on that guest. The
+      # session defaults to main, is created when it does not exist, and a
+      # trailing command starts inside it. zellij runs on the guest, so a sleep
+      # or a dropped connection only detaches the client and `zj` returns to the
+      # same session.
+      #
+      # Landing in the session manager instead was tried and dropped: it needs a
+      # manager-only layout and leaves a permanent session behind, while the
+      # manager is already a keybind away inside the guest (session mode, then
+      # w, or s for the fzf picker).
+      zj() {
+        if (( $# < 1 )); then
+          print -u2 'usage: zj <host> [session] [command...]'
+          return 2
+        fi
+        local host=$1 name=''${2:-main}
+        if (( $# >= 2 )); then shift 2; else shift; fi
+        if (( $# )); then
+          ssh -t "$host" "zellij attach --create '$name' -- $*"
+        else
+          ssh -t "$host" zellij attach --create "$name"
+        fi
+      }
+
       # machine-specific / secret overrides, kept out of git (see .gitignore)
       [[ -r "$DOTFILES/zsh/paths.zsh.private" ]] && source "$DOTFILES/zsh/paths.zsh.private"
       [[ -r "$DOTFILES/private/secrets.zsh" ]] && source "$DOTFILES/private/secrets.zsh"

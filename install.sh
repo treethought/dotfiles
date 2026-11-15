@@ -76,9 +76,9 @@ link_file niri/niri-portals.conf "$HOME/.config/xdg-desktop-portal/niri-portals.
 link_file dms/settings.json "$HOME/.config/dms/settings.json"
 link_file dms/niri "$HOME/.config/niri/dms"
 
-# Zellij
-link_file zellij/config.kdl "$HOME/.config/zellij/config.kdl"
-link_file zellij/scripts/session-picker.sh "$HOME/.config/zellij/scripts/session-picker.sh"
+# Zellij, whole: zellij writes its config here, so a directory link keeps the
+# layouts, scripts and any edit made from inside it in the repo.
+link_file zellij "$HOME/.config/zellij"
 
 # Crush
 link_file crush/crush.json "$HOME/.config/crush/crush.json"

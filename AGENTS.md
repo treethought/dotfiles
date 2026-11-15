@@ -77,6 +77,7 @@ Use the smallest appropriate ownership boundary:
 | macOS GUI apps | Homebrew | `Brewfile` |
 | Secrets and per-machine overrides | ignored local files | `private/`, `*.private` |
 | Tools installed outside Nix and dnf that self-update | their installer, via `bin/install-tools.sh` | polytoken |
+| roast | the brew cask where brew exists, `go install` elsewhere | `bin/install-tools.sh`, `Brewfile` |
 
 The agent tools read their endpoint URLs from the environment (private/secrets.zsh), so a new
 machine needs `private/secrets.zsh` before crush, opencode, polytoken, or roast can reach a
@@ -138,6 +139,26 @@ nix log /nix/store/<derivation>.drv
 - Neovim, Ranger, Ghostty, Zellij, Git, Crush, and PolyToken config paths
 
 When adding a managed file, update `install.sh` and test it on a non-conflicting path. Preserve the backup behavior.
+
+## Terminal: zellij
+
+`install.sh` links the whole of `zellij/` to `~/.config/zellij`, so anything written there from inside
+zellij lands in the repo. Caches and plugins live in `~/.cache/zellij` and `~/.local/share/zellij`, so
+normal use writes nothing here; `config.kdl.bak`, if zellij ever rotates the file, is worth ignoring.
+
+Zellij is the local workspace, and it is also the way long-running work survives on a guest.
+`zj <host> [session] [command]` in `nix/zsh.nix` is the whole interface: the session defaults to
+`main`, is created when missing, and a trailing command starts inside it (`zj devbox poly polytoken
+continue`). The session lives on the guest, so a sleep or a dropped connection only detaches the
+client. Nothing is created at login: a session exists because someone started it.
+
+Opening the guest's session manager on arrival was tried and dropped. Zellij has no option for it:
+the `welcome-screen` alias has no effect on a new session, and `default_layout` pointing at a
+manager-only layout would also apply to sessions the manager creates, so it needs a layout plus a
+wrapper, and leaves that session running in the guest's list forever. Inside any session the manager
+is one keybind away: session mode, then `w` for the plugin or `s` for the fzf picker. To restore it,
+add `zellij/layouts/manager.kdl` and a no-session branch in `zj` running
+`zellij attach manager || zellij -s manager -n manager`.
 
 ## Desktop: niri and DMS
 
