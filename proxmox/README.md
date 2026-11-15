@@ -49,7 +49,9 @@ repeats steps that are already done.
 ```
 
 The cleanup runs before the VM goes away, because both steps need it alive: `tailscale logout`
-inside the guest, and deleting the guest's SSH key from GitHub. `SETUP_TAILSCALE=0`,
+inside the guest, and deleting the guest's SSH key from GitHub. An optional `ob sync-unlink`
+disconnects the Obsidian vault, which only matters if the disks survive (a stopped VM or a backup
+taken first); the device itself stays in Obsidian's version history. `SETUP_TAILSCALE=0`,
 `SETUP_GH=0`, and `YES=1` answer the questions up front; `qm destroy --purge` also drops the VM
 from backup jobs and replication.
 
@@ -66,8 +68,8 @@ version), `CIUSER`, `SSHKEYS`, `BOOTSTRAP` (0 to stop after the VM).
 `bootstrap-devbox.sh`: `TARGET` (devbox), `REPO`, `DIR`, `TS_AUTHKEY` (skip the browser login),
 `SSH_KEY` (path on the machine running the script to an existing private key, also offered
 as the prompt's default; its public half is derived or copied alongside), and `SETUP_KEY`,
-`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, each `1` or `0` to answer a question without
-asking, plus `SECRETS_FILE` to point at a different file.
+`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, `SETUP_OBSIDIAN`, each `1` or `0` to answer a
+question without asking, plus `SECRETS_FILE` to point at a different file.
 
 The optional steps are questions: SSH private key (a path, with Tab completion when run from a
 terminal; empty generates one; `skip` for none), install Tailscale and join the tailnet

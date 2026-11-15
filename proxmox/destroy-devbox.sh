@@ -81,6 +81,17 @@ if [ -n "$GUEST_IP" ] && [ "$SETUP_TAILSCALE" != "0" ]; then
   fi
 fi
 
+# Unlinking is local to the guest, so it only matters when the disks survive this
+# run (a snapshotted or stopped VM, or a backup taken first). The device itself
+# stays in Obsidian's version history; there is no CLI to remove it.
+if [ -n "$GUEST_IP" ] && [ "${SETUP_OBSIDIAN:-ask}" != "0" ]; then
+  if ask "Unlink the Obsidian vault on this guest?" y; then
+    ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" \
+      '$HOME/.nix-profile/bin/ob sync-unlink --path $HOME/robovault' 2>/dev/null ||
+      echo "could not unlink the vault; it is removed with the disks anyway"
+  fi
+fi
+
 if [ -n "$GUEST_IP" ] && [ "$SETUP_GH" != "0" ] && have gh; then
   pubkey=$(ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" 'cat ~/.ssh/id_ed25519.pub 2>/dev/null' || true)
   if [ -n "$pubkey" ] && ask "Delete this guest's key from GitHub?" n; then

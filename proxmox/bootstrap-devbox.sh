@@ -30,6 +30,7 @@ SETUP_KEY=${SETUP_KEY:-ask}          # ask | 1 | 0
 SETUP_TAILSCALE=${SETUP_TAILSCALE:-ask}  # ask | 1 | 0
 SETUP_GH=${SETUP_GH:-ask}            # ask | 1 | 0
 SETUP_SECRETS=${SETUP_SECRETS:-ask}  # ask | 1 | 0, copy private/secrets.zsh over
+SETUP_OBSIDIAN=${SETUP_OBSIDIAN:-ask}  # ask | 1 | 0, log in and start Obsidian Sync
 SECRETS_FILE=${SECRETS_FILE:-private/secrets.zsh}  # path inside the repo
 
 die() { echo "error: $*" >&2; exit 1; }
@@ -109,6 +110,13 @@ fi
 if [ "$SETUP_SECRETS" = "ask" ]; then
   if ask "Copy $SECRETS_FILE to the guest?" n; then SETUP_SECRETS=1; else SETUP_SECRETS=0; fi
 fi
+if [ "$SETUP_OBSIDIAN" = "ask" ]; then
+  if ask "Set up Obsidian Sync on this guest (needs the secrets above)?" n; then
+    SETUP_OBSIDIAN=1
+  else
+    SETUP_OBSIDIAN=0
+  fi
+fi
 
 if [ "$SETUP_KEY" = "0" ]; then
   SETUP_GH=0 # nothing to register
@@ -118,7 +126,7 @@ fi
 
 # Say what was decided, so a default taken by pressing enter is visible.
 onoff() { [ "$1" = "1" ] && echo yes || echo no; }
-echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), gh key $(onoff "$SETUP_GH")"
+echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), obsidian $(onoff "$SETUP_OBSIDIAN"), gh key $(onoff "$SETUP_GH")"
 
 # --remote streams this file to the guest instead of running it here. Answers
 # already collected are passed as variables, so the guest side never prompts.
@@ -126,6 +134,7 @@ if [ -n "$REMOTE" ]; then
   [ -f "$0" ] || die "--remote needs this script as a file; run it from the repo"
 
   forward="SETUP_KEY=$SETUP_KEY SETUP_TAILSCALE=$SETUP_TAILSCALE SETUP_GH=$SETUP_GH"
+  forward="$forward SETUP_SECRETS=$SETUP_SECRETS SETUP_OBSIDIAN=$SETUP_OBSIDIAN"
   if [ -n "$TS_AUTHKEY" ]; then forward="$forward TS_AUTHKEY='$TS_AUTHKEY'"; fi
 
   # A key can only be read where this runs, so copy it over and point the guest
@@ -139,8 +148,21 @@ if [ -n "$REMOTE" ]; then
     forward="$forward SSH_KEY=$key_copy"
   fi
 
+  # The guest-side script reads the secrets during the run (Obsidian Sync needs
+  # them), before the clone exists, so hand over a copy and delete it afterwards.
+  secrets_copy=
+  if [ "$SETUP_SECRETS" = "1" ]; then
+    src="$(dirname "$0")/../$SECRETS_FILE"
+    if [ -r "$src" ]; then
+      secrets_copy="/tmp/bootstrap-secrets.$$"
+      scp -q "$src" "$REMOTE:$secrets_copy"
+      forward="$forward SECRETS_FILE=$secrets_copy"
+    fi
+  fi
+
   ssh "$REMOTE" "$forward bash -s" <"$0"
   if [ -n "$key_copy" ]; then ssh "$REMOTE" "rm -f $key_copy $key_copy.pub"; fi
+  if [ -n "$secrets_copy" ]; then ssh "$REMOTE" "rm -f $secrets_copy"; fi
 
   # The clone exists by now, so there is somewhere to put the file.
   if [ "$SETUP_SECRETS" = "1" ]; then
@@ -329,15 +351,91 @@ register_git_key() {
   fi
 }
 
+# Obsidian Sync setup: log in with the secrets file, configure the vault, run one
+# sync, and record the path for obsidian-sync to read. Passwords are passed as
+# arguments, so they appear in the process table for that moment.
+setup_obsidian() {
+  local secrets vault_path ob
+  case $SECRETS_FILE in
+    /*) secrets=$SECRETS_FILE ;;
+    *) secrets="$DIR/$SECRETS_FILE" ;;
+  esac
+  [ -r "$secrets" ] || { echo "no $SECRETS_FILE; skipping obsidian" >&2; return 0; }
+  # shellcheck disable=SC1090
+  . "$secrets"
+  if [ -z "${OBSIDIAN_EMAIL:-}" ] || [ -z "${OBSIDIAN_PASSWORD:-}" ] || [ -z "${OBSIDIAN_VAULT:-}" ]; then
+    echo "OBSIDIAN_EMAIL, OBSIDIAN_PASSWORD or OBSIDIAN_VAULT unset; skipping obsidian" >&2
+    return 0
+  fi
+
+  ob="$HOME/.nix-profile/bin/ob"
+  [ -x "$ob" ] || { echo "ob is not installed; skipping obsidian" >&2; return 0; }
+
+  vault_path=${OBSIDIAN_VAULT_PATH:-$HOME/vault}
+  mkdir -p "$vault_path"
+
+  # Auth and configuration are separate checks: sync-list-local answers from
+  # local config even when logged out, so auth is probed against the server.
+  authed=0
+  "$ob" sync-list-remote --json >/dev/null 2>&1 && authed=1
+  configured=0
+  "$ob" sync-list-local --json 2>/dev/null |
+    grep -qF "\"path\": \"$vault_path\"" && configured=1
+
+  if [ "$authed" = 1 ] && [ "$configured" = 1 ]; then
+    echo "obsidian sync already configured for $vault_path"
+  else
+    if [ "$authed" = 0 ]; then
+      # The password is passed as an argument and is therefore visible in the
+      # process table for the moment the command runs; accepted for a
+      # single-user guest at home, where the alternative needs a terminal.
+      if ! "$ob" login --email "$OBSIDIAN_EMAIL" --password "$OBSIDIAN_PASSWORD" >/dev/null 2>&1; then
+        echo "obsidian login failed; check OBSIDIAN_EMAIL and OBSIDIAN_PASSWORD" >&2
+        return 0
+      fi
+    fi
+    if [ "$configured" = 0 ]; then
+      # The vault is end-to-end encrypted, so sync-setup needs that password too.
+      setup_args=(--vault "$OBSIDIAN_VAULT" --path "$vault_path" --device-name "$(hostname -s)")
+      [ -n "${OBSIDIAN_E2E_PASSWORD:-}" ] && setup_args+=(--password "$OBSIDIAN_E2E_PASSWORD")
+      "$ob" sync-setup "${setup_args[@]}"
+    fi
+  fi
+
+  # Materialise the vault once, so the unit's condition holds.
+  "$ob" sync --path "$vault_path" >/dev/null 2>&1 || true
+
+  # The unit runs inside ~/robovault, so a different path cannot be driven
+  # declaratively without passing it through the unit.
+  if [ "$vault_path" != "$HOME/robovault" ]; then
+    echo "obsidian-sync expects the vault at ~/robovault, not $vault_path;" >&2
+    echo "set OBSIDIAN_VAULT_PATH=\$HOME/robovault or edit nix/headless.nix" >&2
+  fi
+
+  # The unit runs without a login session, so the user manager has to linger,
+  # and systemd --user needs a runtime directory over a plain ssh command.
+  export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+  loginctl enable-linger "$(id -un)" 2>/dev/null ||
+    sudo loginctl enable-linger "$(id -un)" 2>/dev/null || true
+  systemctl --user enable --now obsidian-sync 2>/dev/null ||
+    echo "obsidian-sync unit is not installed yet; apply the flake, then enable it" >&2
+  echo "obsidian sync configured for $OBSIDIAN_VAULT at $vault_path"
+}
+
 if [ "$SETUP_KEY" = "1" ]; then
   prepare_ssh
   setup_ssh_key
 fi
 [ "$SETUP_TAILSCALE" = "1" ] && join_tailnet
 [ "$SETUP_GH" = "1" ] && register_git_key
+[ "$SETUP_OBSIDIAN" = "1" ] && setup_obsidian
 
-if [ "$SETUP_SECRETS" = "1" ] && [ ! -r "$DIR/$SECRETS_FILE" ]; then
-  echo "note: $DIR/$SECRETS_FILE is missing; copy it from the workstation for the"
+case $SECRETS_FILE in
+  /*) secrets_dest=$SECRETS_FILE ;;
+  *) secrets_dest="$DIR/$SECRETS_FILE" ;;
+esac
+if [ "$SETUP_SECRETS" = "1" ] && [ ! -r "$secrets_dest" ]; then
+  echo "note: $secrets_dest is missing; copy it from the workstation for the"
   echo "      agent tools to reach a provider"
 fi
 
