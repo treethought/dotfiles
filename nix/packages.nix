@@ -61,7 +61,6 @@ in {
     tmux
     websocat
     wget
-    yt-dlp
     zellij
 
     # languages / dev

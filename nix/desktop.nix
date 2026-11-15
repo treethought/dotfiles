@@ -10,8 +10,8 @@
   ];
 
   home.packages = with pkgs; [
-    # Full build, so ffplay is available; the headless variant is for guests.
     ffmpeg
+    yt-dlp
     firefoxpwa
     librepods
     helm # polyphonic synthesizer
