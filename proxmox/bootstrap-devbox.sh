@@ -251,6 +251,9 @@ fi
 echo "applying the $TARGET target"
 nix run home-manager/master -- switch --flake ".#$TARGET"
 ./install.sh
+if [ -x bin/install-tools.sh ]; then
+  bin/install-tools.sh
+fi
 
 # Ghostty sends TERM=xterm-ghostty, and zsh resolves terminfo while the session
 # is still starting, before ~/.terminfo is consulted. Without an entry in the

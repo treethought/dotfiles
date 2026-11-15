@@ -71,6 +71,7 @@ Use the smallest appropriate ownership boundary:
 | Fedora drivers, codecs, system services, audio engines, terminal, and native build toolchain | dnf or vendor/COPR repo | manual Fedora setup |
 | macOS GUI apps | Homebrew | `Brewfile` |
 | Secrets and per-machine overrides | ignored local files | `private/`, `*.private` |
+| Tools installed outside Nix and dnf that self-update | their installer, via `bin/install-tools.sh` | polytoken |
 
 The agent tools read their endpoint URLs from the environment (private/secrets.zsh), so a new
 machine needs `private/secrets.zsh` before crush, opencode, polytoken, or roast can reach a

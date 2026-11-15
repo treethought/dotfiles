@@ -17,6 +17,17 @@ Hardware specifics (including the internal mic gain quirk) are in `hardware.md`.
 - Linuxbrew prerequisites, if Homebrew is used at all: the `development-tools` group plus
   `procps-ng`, `curl`, and `file`. Most portable CLI tools stay in Nix.
 
+## Tools with their own installer
+
+`bin/install-tools.sh` installs the tools that sit outside Nix and dnf and keep
+themselves up to date, currently polytoken. The dev VM bootstrap runs it as part
+of provisioning; on the laptop run it after a fresh install, or again only if a
+tool is missing.
+
+```sh
+./bin/install-tools.sh
+```
+
 ## Manual steps that need root
 
 - `/etc/bluetooth/main.conf`: `DeviceID = bluetooth:004C:0000:0000` under `[General]`. Then
