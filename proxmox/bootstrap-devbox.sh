@@ -33,6 +33,11 @@ SETUP_SECRETS=${SETUP_SECRETS:-ask}  # ask | 1 | 0, copy private/secrets.zsh ove
 SETUP_OBSIDIAN=${SETUP_OBSIDIAN:-ask}  # ask | 1 | 0, log in and start Obsidian Sync
 SETUP_AGENTS=${SETUP_AGENTS:-ask}    # ask | 1 | 0, copy the agent directory over
 SETUP_REPOS=${SETUP_REPOS:-ask}      # ask | 1 | 0, clone the repositories listed below
+SETUP_GIT=${SETUP_GIT:-ask}          # ask | 1 | 0, write the git identity on the guest
+SETUP_DNF=${SETUP_DNF:-0}            # 1 upgrades the guest's Fedora packages; 0 leaves them
+GIT_NAME=${GIT_NAME:-}               # author name; defaults to the private git config
+GIT_EMAIL=${GIT_EMAIL:-}             # author email; same default
+GIT_LOCAL_FILE=${GIT_LOCAL_FILE:-git/gitconfig.local.private}  # source of those defaults
 AGENTS_DIR=${AGENTS_DIR:-$HOME/.agents}  # source, on the machine running this
 AGENTS_MD=${AGENTS_MD:-$HOME/AGENTS.md}   # global agent guidance
 SECRETS_FILE=${SECRETS_FILE:-private/secrets.zsh}  # path inside the repo
@@ -139,6 +144,24 @@ if [ "$SETUP_REPOS" = "ask" ]; then
     SETUP_REPOS=0
   fi
 fi
+# git refuses to commit without an author, and ~/.gitconfig is a symlink into
+# the repo, so the identity belongs in the local file it includes. The name and
+# email default to the workstation's private config, which is where they are
+# already written down.
+if [ "$SETUP_GIT" = "ask" ]; then
+  if ask "Set the git author on the guest?" y; then SETUP_GIT=1; else SETUP_GIT=0; fi
+fi
+if [ "$SETUP_GIT" = "1" ]; then
+  git_private=$(local_path "$GIT_LOCAL_FILE")
+  [ -n "$GIT_NAME" ] ||
+    GIT_NAME=$(git config -f "$git_private" user.name 2>/dev/null || true)
+  [ -n "$GIT_EMAIL" ] ||
+    GIT_EMAIL=$(git config -f "$git_private" user.email 2>/dev/null || true)
+  if [ -z "$GIT_NAME" ] || [ -z "$GIT_EMAIL" ]; then
+    echo "no git author found in $git_private; set GIT_NAME and GIT_EMAIL" >&2
+    SETUP_GIT=0
+  fi
+fi
 if [ "$SETUP_OBSIDIAN" = "ask" ]; then
   if ask "Set up Obsidian Sync on this guest (needs the secrets above)?" n; then
     SETUP_OBSIDIAN=1
@@ -155,7 +178,7 @@ fi
 
 # Say what was decided, so a default taken by pressing enter is visible.
 onoff() { [ "$1" = "1" ] && echo yes || echo no; }
-echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), agents $(onoff "$SETUP_AGENTS"), repos $(onoff "$SETUP_REPOS"), obsidian $(onoff "$SETUP_OBSIDIAN"), gh key $(onoff "$SETUP_GH")"
+echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), agents $(onoff "$SETUP_AGENTS"), repos $(onoff "$SETUP_REPOS"), git $(onoff "$SETUP_GIT"), dnf $(onoff "$SETUP_DNF"), obsidian $(onoff "$SETUP_OBSIDIAN"), gh key $(onoff "$SETUP_GH")"
 
 # --remote streams this file to the guest instead of running it here. Answers
 # already collected are passed as variables, so the guest side never prompts.
@@ -165,6 +188,9 @@ if [ -n "$REMOTE" ]; then
   forward="SETUP_KEY=$SETUP_KEY SETUP_TAILSCALE=$SETUP_TAILSCALE SETUP_GH=$SETUP_GH"
   forward="$forward SETUP_SECRETS=$SETUP_SECRETS SETUP_OBSIDIAN=$SETUP_OBSIDIAN"
   forward="$forward SETUP_AGENTS=$SETUP_AGENTS SETUP_REPOS=$SETUP_REPOS"
+  forward="$forward SETUP_GIT=$SETUP_GIT SETUP_DNF=$SETUP_DNF"
+  if [ -n "$GIT_NAME" ]; then forward="$forward GIT_NAME='$GIT_NAME'"; fi
+  if [ -n "$GIT_EMAIL" ]; then forward="$forward GIT_EMAIL='$GIT_EMAIL'"; fi
   if [ -n "$TS_AUTHKEY" ]; then forward="$forward TS_AUTHKEY='$TS_AUTHKEY'"; fi
   # Only an explicit override travels; the default is this machine's home, which
   # is not what the guest's home necessarily is.
@@ -268,6 +294,20 @@ if ! have git || ! have curl; then
   sudo dnf install -y git curl
 fi
 have git || die "git is still missing; install it with dnf and re-run"
+
+# The image's packages are frozen at provisioning, because cloud-init upgrading
+# them on first boot bought waiting and lock contention, so this is the only
+# thing that moves them. Opt-in: it can pull a kernel and the NVIDIA-free driver
+# set with it, which is a decision for the person running it, not for a run that
+# was meant to update dotfiles.
+if [ "$SETUP_DNF" = "1" ]; then
+  echo "upgrading the guest's Fedora packages"
+  if sudo dnf upgrade --refresh --assumeyes; then
+    echo "packages upgraded; reboot if the kernel or a driver changed"
+  else
+    echo "package upgrade failed; continuing with what is installed" >&2
+  fi
+fi
 
 # The upstream installer refuses to run on SELinux, which Fedora enforces, so
 # this uses the same Determinate installer as the laptop.
@@ -562,10 +602,33 @@ clone_repos() {
   echo "repositories: $cloned cloned, $present already present, $failed failed"
 }
 
+# An author is what a commit needs, and it cannot go in ~/.gitconfig: that is a
+# symlink into the repo. It goes in the local file the shared config includes.
+# Signing and the https-to-ssh rewrite stay out on purpose: a guest's key is its
+# own, and one without a key must still be able to clone over https.
+setup_git_identity() {
+  local file=$HOME/.gitconfig.local
+  if [ -z "${GIT_NAME:-}" ] || [ -z "${GIT_EMAIL:-}" ]; then
+    echo "no git author supplied; skipping" >&2
+    return 0
+  fi
+  if [ -L "$file" ]; then
+    echo "$file is a link into the repo; leaving it alone" >&2
+    return 0
+  fi
+  if [ -f "$file" ] && grep -q '^\[user\]' "$file"; then
+    echo "git author already set in $file"
+    return 0
+  fi
+  printf '[user]\n\tname = %s\n\temail = %s\n' "$GIT_NAME" "$GIT_EMAIL" >"$file"
+  echo "git author set to $GIT_NAME <$GIT_EMAIL>"
+}
+
 if [ "$SETUP_KEY" = "1" ]; then
   prepare_ssh
   setup_ssh_key
 fi
+[ "$SETUP_GIT" = "1" ] && setup_git_identity
 [ "$SETUP_TAILSCALE" = "1" ] && join_tailnet
 [ "$SETUP_GH" = "1" ] && register_git_key
 [ "$SETUP_REPOS" = "1" ] && clone_repos

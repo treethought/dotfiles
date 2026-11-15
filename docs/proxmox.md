@@ -230,10 +230,17 @@ answer for through the node's guest agent.
 The guest pulls from GitHub, so a commit that is only local never lands; the script says so
 before it starts.
 
+`SETUP_DNF=1` is the exception: no question, off by default, and it runs `dnf upgrade --refresh
+--assumeyes` inside the guest. Provisioning otherwise leaves the image's package set alone.
+
 The optional steps are questions, asked before any work starts on whichever machine runs the
 script: SSH private key (a path, with Tab completion; empty to generate one; `skip` for none), install Tailscale and
 join the tailnet (default yes), clone the repositories listed in `private/repos.txt` (default yes,
-asked only when that file has entries), register the key with gh (default no). The answers are
+asked only when that file has entries), set the git author (default yes), register the key with gh
+(default no). A guest needs an author to commit, and it cannot go in `~/.gitconfig` because that is a
+symlink into the repo, so the step writes `~/.gitconfig.local`, which the shared config includes;
+name and email come from `git/gitconfig.local.private` on the workstation unless `GIT_NAME` and
+`GIT_EMAIL` say otherwise. Signing and the https-to-ssh rewrite are deliberately not copied. The answers are
 handed to the guest as variables, so `--remote` needs no terminal there, and `bash -s < script`
 applies the defaults.
 

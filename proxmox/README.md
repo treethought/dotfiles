@@ -61,8 +61,21 @@ are not pushed or files that are not committed: the guest pulls from GitHub, so 
 arrive. `--push` pushes this branch first, which is the one-command version of that.
 
 The flags turn individual first-run steps back on: `--key`, `--gh` (needs `--key`), `--tailnet`,
-`--secrets`, `--agents`, `--repos`, `--obsidian`. `TARGET` picks the Home Manager target
-(default `devbox`).
+`--secrets`, `--agents`, `--repos`, `--git`, `--dnf`, `--obsidian`. `TARGET` picks the Home Manager
+target (default `devbox`).
+
+What runs, in order: wait for cloud-init, ensure git/curl/Nix, `git clone` or `git pull --ff-only`,
+`home-manager switch --flake .#devbox`, `./install.sh`, `bin/install-tools.sh`, then the optional
+steps.
+
+The guest's Fedora packages are separate, and only move with `--dnf` (or `SETUP_DNF=1`), which runs
+`dnf upgrade --refresh --assumeyes` inside the guest and reports whether a reboot is wanted. Without
+it, provisioning never touches the package set, which is why the image is created with
+`CIUPGRADE=0`: no upgrade on first boot, no dnf lock to wait on. To do it by hand instead:
+
+```sh
+ssh devbox 'sudo dnf upgrade --refresh'
+```
 
 ## Running them separately
 
@@ -110,15 +123,17 @@ version), `CIUSER`, `SSHKEYS`, `BOOTSTRAP` (0 to stop after the VM).
 `bootstrap-devbox.sh`: `TARGET` (devbox), `REPO`, `DIR`, `TS_AUTHKEY` (skip the browser login),
 `SSH_KEY` (path on the machine running the script to an existing private key, also offered
 as the prompt's default; its public half is derived or copied alongside), and `SETUP_KEY`,
-`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, `SETUP_AGENTS`, `SETUP_REPOS`, `SETUP_OBSIDIAN`,
-each `1` or `0` to answer a question without asking, plus `SECRETS_FILE`, `AGENTS_DIR`,
-`AGENTS_MD`, `REPOS_FILE`, and `REPO_HOME` to point at different paths.
+`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, `SETUP_AGENTS`, `SETUP_REPOS`, `SETUP_GIT`,
+`SETUP_OBSIDIAN`, each `1` or `0` to answer a question without asking, plus `SECRETS_FILE`,
+`AGENTS_DIR`, `AGENTS_MD`, `REPOS_FILE`, `REPO_HOME`, `GIT_NAME`, `GIT_EMAIL`, and
+`GIT_LOCAL_FILE` to point at different paths or values.
 
 The optional steps are questions: SSH private key (a path, with Tab completion when run from a
 terminal; empty generates one; `skip` for none), install Tailscale and join the tailnet
 (default yes), copy `private/secrets.zsh` to the guest (default no), clone the repositories
-listed in `private/repos.txt` (default yes, asked only when the file has entries), register the
-key with GitHub via gh (default no). They are asked before any work starts, on whichever machine
+listed in `private/repos.txt` (default yes, asked only when the file has entries), set the git
+author (default yes, taken from the private git config), register the key with GitHub via gh
+(default no). They are asked before any work starts, on whichever machine
 runs the script, and the answers are handed to the guest as variables, so `--remote` needs no
 terminal there. Without a terminal the defaults apply.
 
