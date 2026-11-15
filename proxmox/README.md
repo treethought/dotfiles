@@ -6,6 +6,7 @@ Two scripts: one builds the VM on the node, one configures the guest inside.
 | --- | --- | --- |
 | `create-devbox.sh` | the node, as root | downloads the Fedora cloud image, checks it, creates the VM, imports the disk, attaches cloud-init, starts it, then pipes the bootstrap into the guest over SSH |
 | `bootstrap-devbox.sh` | inside the guest, as your user | installs Nix, clones the repo, applies the Home Manager target, links the configs, joins the tailnet |
+| `destroy-devbox.sh` | anywhere with ssh to the node | logs the guest out of the tailnet, optionally deletes its key from GitHub, then destroys the VM and its disks |
 
 ## Whole flow
 
@@ -30,6 +31,22 @@ NODE=pve BOOTSTRAP=0 ./proxmox/create-devbox.sh   # VM only
 
 Re-running the bootstrap is how a guest is updated: it pulls, re-applies the target, and only
 repeats steps that are already done.
+
+## Destroying a guest
+
+```sh
+NODE=root@pve ./proxmox/destroy-devbox.sh devbox2
+NODE=root@pve ./proxmox/destroy-devbox.sh 202
+```
+
+The cleanup runs before the VM goes away, because both steps need it alive: `tailscale logout`
+inside the guest, and deleting the guest's SSH key from GitHub. `SETUP_TAILSCALE=0`,
+`SETUP_GH=0`, and `YES=1` answer the questions up front; `qm destroy --purge` also drops the VM
+from backup jobs and replication.
+
+Deleting the GitHub key needs the public-key scope, which `gh auth login` does not request by
+default: `gh auth refresh -s admin:public_key`. Without it the script says so and leaves the key
+alone, so you can remove it in the web UI.
 
 ## Options
 
