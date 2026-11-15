@@ -683,4 +683,3 @@ serialization_interval 300
 //   - "off" (do not forward notifications to the host terminal)
 //
 // host_notification_protocol "auto"
-session_serialization false
