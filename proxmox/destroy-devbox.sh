@@ -73,8 +73,11 @@ fi
 
 if [ -n "$GUEST_IP" ] && [ "$SETUP_TAILSCALE" != "0" ]; then
   if ask "Log this guest out of the tailnet?" n; then
-    ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" 'sudo tailscale logout' 2>/dev/null ||
-      echo "could not log out; remove the device from the admin console instead"
+    ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" 'sudo tailscale logout' 2>/dev/null || true
+    # Logging out revokes the node key but leaves the device registered as
+    # offline, and the CLI has no verb to delete it. Until it is removed in the
+    # admin console, the next guest with this name is handed a -1 suffix.
+    echo "logged out; remove the device in the tailnet admin console to free the name"
   fi
 fi
 

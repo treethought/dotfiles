@@ -59,6 +59,19 @@ DEFAULT_NODE=${DEFAULT_NODE:-root@pve}   # used when qm is not on this machine
 BOOTSTRAP=${BOOTSTRAP:-1}
 CIUPGRADE=${CIUPGRADE:-0}          # 1 lets cloud-init upgrade packages on first boot
 
+# A destroyed guest leaves its device registered in the tailnet, and Tailscale
+# then hands the replacement a -1 suffix, so the guest name and the DNS name
+# diverge. Refuse to start in that case instead of creating a confusing guest.
+check_tailnet_name() {
+  [ "${SETUP_TAILSCALE:-}" = "0" ] && return 0
+  command -v tailscale >/dev/null 2>&1 || return 0
+  tailscale status 2>/dev/null | awk '{print $2}' | grep -qx "$NAME" || return 0
+  die "the tailnet still has a device named $NAME (removed guests stay registered).
+  Remove it at https://login.tailscale.com/admin/machines and re-run, or pick
+  another name; otherwise the guest joins as $NAME-1 and the names diverge."
+}
+check_tailnet_name
+
 # On a node the commands run here; anywhere else, assume the node over ssh.
 if [ -z "$NODE" ] && ! command -v qm >/dev/null 2>&1; then
   NODE=$DEFAULT_NODE
