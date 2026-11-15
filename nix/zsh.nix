@@ -12,7 +12,7 @@
     # replaces oh-my-zsh running compinit (lib/completion.zsh)
     enableCompletion = true;
     # replace the zsh-autosuggestions / zsh-syntax-highlighting plugins
-    # that install-omz.sh cloned into oh-my-zsh's custom/plugins
+    # that the old oh-my-zsh setup cloned into custom/plugins
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
 
@@ -26,7 +26,7 @@
       extended = true;
     };
 
-    # zsh-vi-mode: was the third custom plugin in install-omz.sh
+    # zsh-vi-mode: was the third custom plugin in the old setup
     plugins = [
       {
         name = "zsh-vi-mode";
