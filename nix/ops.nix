@@ -6,5 +6,10 @@
   home.packages = with pkgs; [
     argocd
     pulumi-bin
+    awscli2
+    kubectl
+    kubectx
+    k9s
+    kubernetes-helm-wrapped
   ];
 }

@@ -15,7 +15,7 @@ Each file is one capability; machines are composed from them in `flake.nix`.
 | `audio.nix` | PipeWire config files and the internal-mic reset unit | `desktop.nix` |
 | `flatpak.nix` | Flathub applications | `desktop.nix` |
 | `fonts.nix` | font packages | `desktop.nix` |
-| `ops.nix` | cloud and cluster tooling (argocd, pulumi); heavy, and not cached for the current pin | `framework` |
+| `ops.nix` | cloud and cluster tooling (argocd, pulumi, awscli2, kubectl, k9s, kubernetes-helm); heavy, and argocd is not cached for the current pin | `framework` |
 | `headless.nix` | tools that only make sense without a display, such as the headless Obsidian Sync client | `devbox` |
 
 ## Targets

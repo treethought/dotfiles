@@ -63,7 +63,6 @@ in {
     wget
     yt-dlp
     zellij
-    ffmpeg
 
     # languages / dev
     go
@@ -83,12 +82,7 @@ in {
     worktrunk # wt: git worktrees
     gcx
 
-    # cloud / k8s
-    awscli2
-    kubernetes-helm-wrapped
-    kubectl
-    kubectx
-    k9s
+    # cloud / k8s: kubectl and friends live in ops.nix
 
     # remote shells
     mosh
