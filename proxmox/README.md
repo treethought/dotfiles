@@ -7,12 +7,11 @@ Two scripts: one builds the VM on the node, one configures the guest inside.
 | `create-devbox.sh` | the node, as root | downloads the Fedora cloud image, checks it, creates the VM, imports the disk, attaches cloud-init, starts it, then pipes the bootstrap into the guest over SSH |
 | `bootstrap-devbox.sh` | inside the guest, as your user | installs Nix, clones the repo, applies the Home Manager target, links the configs, joins the tailnet |
 | `destroy-devbox.sh` | anywhere with ssh to the node | logs the guest out of the tailnet, optionally deletes its key from GitHub, then destroys the VM and its disks |
-| `template-devbox.sh` | anywhere with ssh to the node | strips a guest's identity (cloud-init, machine-id, host keys, tailnet login, history) and marks it as a template |
 
 ## Whole flow
 
 ```sh
-./proxmox/create-devbox.sh [--from-template ID] [--linked] [name] [vmid]
+./proxmox/create-devbox.sh [name] [vmid]
 ```
 
 The name defaults to `devbox` and the vmid to the next one above the highest in use. `NODE`
@@ -41,37 +40,6 @@ BOOTSTRAP=0 ./proxmox/create-devbox.sh             # VM only
 
 Re-running the bootstrap is how a guest is updated: it pulls, re-applies the target, and only
 repeats steps that are already done.
-
-## Templates
-
-A template is a bootstrapped guest with its identity stripped, so a new VM takes
-seconds instead of a cold install. Build it from a guest that carries neither a
-tailnet login nor secrets, since every clone inherits both:
-
-```sh
-SETUP_TAILSCALE=0 SETUP_SECRETS=0 ./proxmox/create-devbox.sh tmpl
-./proxmox/template-devbox.sh tmpl
-```
-
-Then clone, re-applying the new name and keys, and letting the normal bootstrap
-run the identity steps:
-
-```sh
-./proxmox/create-devbox.sh --from-template 101 devbox3
-./proxmox/create-devbox.sh --from-template 101 --linked devbox3
-```
-
-`--linked` shares blocks with the template instead of copying them, and that is the difference
-between seconds and minutes: a full clone copies the whole virtual disk (48 GiB on a default
-build, of which about 5 GiB is data), while a linked clone is a thin snapshot. Linked clones do
-depend on the template, so do not modify or delete it while they exist.
-
-`CIUPGRADE` defaults to `0`, so cloud-init does not re-run the image's package upgrade on every
-clone; set `CIUPGRADE=1` when you want that. Rebuild the template whenever the configuration
-changes, since a stale template silently gives you an old machine.
-
-If you prefer full clones, build the template with a smaller `DISK`; the copy cost scales with the
-virtual size, not with how much is in use.
 
 ## Destroying a guest
 
@@ -125,32 +93,5 @@ git -C ~/dotfiles remote set-url origin git@github.com:treethought/dotfiles.git
 
 The URL rewrite that sends https GitHub URLs over SSH is machine-local (in
 `git/gitconfig.local.private`), so a guest without a key cannot be broken by it.
-
-## Several devboxes
-
-Bootstrap one guest, clean it, then treat it as a template:
-
-```sh
-SETUP_TAILSCALE=0 ./proxmox/bootstrap-devbox.sh --remote <guest>
-```
-
-Then inside it:
-
-```sh
-sudo cloud-init clean --logs --seed
-sudo rm -f /etc/machine-id /etc/ssh/ssh_host_*
-rm -rf ~/.zsh_history ~/.bash_history
-sudo poweroff
-```
-
-And on the node:
-
-```sh
-qm template 201
-qm clone 201 202 --name devbox2 --full
-```
-
-Clones keep the Nix store, so they skip the download and the `argocd` build entirely. Each clone
-gets its own lease and should join the tailnet itself.
 
 Details, host facts, and the backup/open items live in `docs/proxmox.md`.

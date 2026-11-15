@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # Create a headless Fedora dev VM.
 #
-#   NODE=pve ./proxmox/create-devbox.sh [--from-template ID] [--linked] [name] [vmid]
+#   NODE=pve ./proxmox/create-devbox.sh [name] [vmid]
 #
-# Without --from-template the disk comes from the Fedora cloud image. With it the
-# VM is cloned from a template, which is much faster because the Nix store and
-# the applied configuration are already on its disk; --linked shares blocks with
-# the template instead of copying them.
+# The disk comes from the Fedora cloud image; cloud-init supplies the user, keys
+# and network, so the guest needs no interactive install.
 #
 # NODE is the machine to create the VM on. It defaults to root@pve when qm is not
 # available locally, and is ignored on a node. Without a vmid the node takes the
@@ -21,15 +19,6 @@ name_arg=
 vmid_arg=
 while [ $# -gt 0 ]; do
   case $1 in
-    --from-template)
-      FROM_TEMPLATE=${2:-}
-      [ -n "$FROM_TEMPLATE" ] || die "--from-template needs a template id"
-      shift 2
-      ;;
-    --linked)
-      LINKED=1
-      shift
-      ;;
     -h | --help)
       sed -n '2,13p' "$0"
       exit 0
@@ -68,8 +57,6 @@ BASE_URL="https://download.fedoraproject.org/pub/fedora/linux/releases/${RELEASE
 NODE=${NODE:-}
 DEFAULT_NODE=${DEFAULT_NODE:-root@pve}   # used when qm is not on this machine
 BOOTSTRAP=${BOOTSTRAP:-1}
-FROM_TEMPLATE=${FROM_TEMPLATE:-}   # clone this template id instead of importing the image
-LINKED=${LINKED:-0}                # 1 makes a linked clone, sharing blocks with the template
 CIUPGRADE=${CIUPGRADE:-0}          # 1 lets cloud-init upgrade packages on first boot
 
 # On a node the commands run here; anywhere else, assume the node over ssh.
@@ -83,7 +70,7 @@ if [ -n "$NODE" ]; then
   vars="VMID='$VMID' NAME='$NAME' IP='$IP' DNS='$DNS' BRIDGE='$BRIDGE' STORE='$STORE'"
   vars="$vars MEMORY='$MEMORY' CORES='$CORES' DISK='$DISK' CIUSER='$CIUSER'"
   vars="$vars RELEASE='$RELEASE' BUILD='$BUILD' SSHKEYS='$SSHKEYS'"
-  vars="$vars FROM_TEMPLATE='$FROM_TEMPLATE' LINKED='$LINKED' CIUPGRADE='$CIUPGRADE'"
+  vars="$vars CIUPGRADE='$CIUPGRADE'"
   # tee so the node's progress is visible while still being parsed here.
   out=$(ssh "$NODE" "$vars bash -s" <"$0" | tee /dev/stderr)
   guest_ip=$(printf '%s\n' "$out" | sed -n 's/^GUEST_IP=//p' | tail -1)
@@ -150,30 +137,6 @@ wait_for_address() {
   done
   return 1
 }
-
-# From a template the disk already holds the store and the configuration, so the
-# clone is seconds rather than a cold install. A linked clone shares blocks with
-# the template until each guest writes.
-if [ -n "$FROM_TEMPLATE" ]; then
-  echo "cloning $FROM_TEMPLATE to $VMID"
-  if [ "$LINKED" = "1" ]; then
-    qm clone "$FROM_TEMPLATE" "$VMID" --name "$NAME"
-  else
-    qm clone "$FROM_TEMPLATE" "$VMID" --name "$NAME" --full
-  fi
-  # The agent is how the address is discovered afterwards, and the template may
-  # predate that being set, so normalise it on the clone.
-  qm set "$VMID" --agent enabled=1 --onboot 1 --serial0 socket \
-    --ciuser "$CIUSER" --sshkeys "$SSHKEYS" --ciupgrade "$CIUPGRADE" \
-    --ipconfig0 "$NETCONF" --nameserver "$DNS"
-  qm start "$VMID"
-  echo "started $NAME ($VMID)"
-  addr=$(wait_for_address) || die "guest reported no address; use qm terminal $VMID"
-  echo "VMID=$VMID"
-  echo "GUEST_IP=$addr"
-  echo "console: qm terminal $VMID"
-  exit 0
-fi
 
 # The cloud image is the whole point of this path: cloud-init supplies the user,
 # keys, and network, so the guest needs no interactive install.

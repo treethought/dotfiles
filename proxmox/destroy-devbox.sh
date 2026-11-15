@@ -32,7 +32,8 @@ fi
 tty_available() { (: </dev/tty) 2>/dev/null; }
 ask() {
   local prompt=$1 default=${2:-y} answer=
-  if [ "$YES" = "1" ] || ! tty_available; then [ "$default" = "y" ]; return; fi
+  if [ "$YES" = "1" ]; then return 0; fi
+  if ! tty_available; then [ "$default" = "y" ]; return; fi
   if [ "$default" = "y" ]; then printf '%s [Y/n] ' "$prompt"; else printf '%s [y/N] ' "$prompt"; fi
   read -r answer </dev/tty || answer=
   case "$answer" in
