@@ -64,7 +64,7 @@ in {
     zellij
 
     # languages / dev
-    go
+    go_1_27 # Go 1.27; plain go is 1.26 in this nixpkgs pin
     pipx
     uv # Python package and project manager
     postgresql # psql (replaces brew libpq/postgresql@18)
