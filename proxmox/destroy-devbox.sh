@@ -126,3 +126,22 @@ fi
 node qm stop "$VMID" --timeout 30 >/dev/null 2>&1 || true
 node qm destroy "$VMID" --purge
 echo "destroyed $NAME ($VMID)"
+
+# The address is handed out again and a rebuilt guest carries a new host key, so
+# a stale entry only produces a mismatch warning on the next connection. This
+# machine is the one that holds the entries, and ssh-keygen keeps the previous
+# file as known_hosts.old, so nothing here is lost.
+clear_known_hosts() {
+  local known=$HOME/.ssh/known_hosts entry removed=0
+  [ -f "$known" ] || return 0
+  for entry in "$@"; do
+    [ -n "$entry" ] || continue
+    # -f, because without it ssh-keygen resolves the home directory from the
+    # password database rather than $HOME and would edit another user's file.
+    ssh-keygen -R "$entry" -f "$known" >/dev/null 2>&1 || continue
+    removed=1
+  done
+  [ "$removed" = "1" ] && echo "removed $NAME from known_hosts"
+  return 0
+}
+clear_known_hosts "$GUEST_IP" "$NAME" "$CIUSER@$GUEST_IP"

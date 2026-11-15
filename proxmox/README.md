@@ -89,6 +89,10 @@ jobs and replication. Both cleanup steps run without asking; `SETUP_TAILSCALE=0`
 `SETUP_OBSIDIAN=0` skip them. Unlinking only matters if the disks survive (a stopped VM, or a backup
 taken first), and the device stays in Obsidian's version history either way.
 
+The guest's entry is also dropped from `~/.ssh/known_hosts` on the machine that runs the script: the
+address is handed out again, and a rebuilt guest has a new host key, so the old entry only produces
+a mismatch warning. `ssh-keygen` keeps the previous file as `known_hosts.old`.
+
 The one question is whether to delete the guest's SSH key from GitHub, which defaults to no because
 it reaches into the account rather than the guest. `SETUP_GH=1` deletes it without asking,
 `SETUP_GH=0` skips it, and `YES=1` confirms both the destroy and the key deletion.
