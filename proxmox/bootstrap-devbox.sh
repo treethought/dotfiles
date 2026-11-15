@@ -206,6 +206,23 @@ echo "applying the $TARGET target"
 nix run home-manager/master -- switch --flake ".#$TARGET"
 ./install.sh
 
+# Ghostty sends TERM=xterm-ghostty, and zsh resolves terminfo while the session
+# is still starting, before ~/.terminfo is consulted. Without an entry in the
+# system database the line editor miscounts columns and every keystroke renders
+# doubled, so install the profile's entry there once.
+install_system_terminfo() {
+  local term=xterm-ghostty src
+  infocmp -A /usr/share/terminfo "$term" >/dev/null 2>&1 && return
+  for src in "${HOME}/.nix-profile/share/terminfo" "${HOME}/.terminfo"; do
+    if infocmp -A "$src" -x "$term" >/dev/null 2>&1; then
+      infocmp -A "$src" -x "$term" | sudo tic -x -o /usr/share/terminfo - >/dev/null 2>&1 &&
+        echo "installed $term terminfo system-wide" && return
+    fi
+  done
+  echo "no $term terminfo source found; remote terminals may render badly" >&2
+}
+install_system_terminfo
+
 # The cloud image logs in with bash. Use the distro's zsh for the login shell so
 # a broken Nix store cannot lock the account out; Home Manager still writes the
 # shell behaviour.
