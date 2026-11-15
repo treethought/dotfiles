@@ -217,6 +217,19 @@ is set. Re-running it only repeats the switch.
 TS_AUTHKEY=tskey-auth-... ./proxmox/bootstrap-devbox.sh --remote devbox
 ```
 
+To apply later changes, use `proxmox/update-devbox.sh` instead: it runs the same bootstrap with
+the first-run steps answered "no", so a guest can be updated in one command without the prompts.
+It takes a tailnet name, a LAN address, or a VM id, and resolves a name the tailnet does not
+answer for through the node's guest agent.
+
+```sh
+./proxmox/update-devbox.sh devbox                 # name, address, or vmid
+./proxmox/update-devbox.sh devbox --agents        # also refresh the agent directory
+```
+
+The guest pulls from GitHub, so a commit that is only local never lands; the script says so
+before it starts.
+
 The optional steps are questions, asked before any work starts on whichever machine runs the
 script: SSH private key (a path, with Tab completion; empty to generate one; `skip` for none), install Tailscale and
 join the tailnet (default yes),

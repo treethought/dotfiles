@@ -1,11 +1,13 @@
 # Proxmox
 
-Two scripts: one builds the VM on the node, one configures the guest inside.
+Three scripts: one builds the VM on the node, one configures the guest inside, one re-applies the
+committed config to a guest that already exists.
 
 | Script | Runs on | Does |
 | --- | --- | --- |
 | `create-devbox.sh` | the node, as root | downloads the Fedora cloud image, checks it, creates the VM, imports the disk, attaches cloud-init, starts it, then pipes the bootstrap into the guest over SSH |
 | `bootstrap-devbox.sh` | inside the guest, as your user | installs Nix, clones the repo, applies the Home Manager target, links the configs, joins the tailnet |
+| `update-devbox.sh` | anywhere with ssh to the guest | answers the first-run questions "no" and re-runs the bootstrap, so a change lands without going through the prompts |
 | `destroy-devbox.sh` | anywhere with ssh to the node | logs the guest out of the tailnet, optionally deletes its key from GitHub, then destroys the VM and its disks |
 
 ## Whole flow
@@ -31,6 +33,36 @@ connect:
 The tailnet form appears only once MagicDNS resolves it, so a run with `SETUP_TAILSCALE=0` shows
 the address alone.
 
+## Updating a guest
+
+```sh
+./proxmox/update-devbox.sh                    # the guest named devbox
+./proxmox/update-devbox.sh devbox2
+./proxmox/update-devbox.sh devbox2 --agents --secrets
+```
+
+It runs the bootstrap with every first-run step answered "no", so nothing is asked and only the
+steps that are always needed run: pull, `home-manager switch`, `install.sh`, `bin/install-tools.sh`.
+
+The guest can be named three ways:
+
+| Form | Example | How it is found |
+| --- | --- | --- |
+| tailnet name | `devbox` | MagicDNS, so it resolves from anywhere on the tailnet |
+| LAN address | `192.168.86.53` | used as given |
+| VM id | `101` | `qm list` on `NODE`, then the address from the guest agent |
+
+A name that does not resolve, or a guest that never joined the tailnet, is looked up on `NODE`
+(`root@pve` by default) and its address read from the guest agent there. A bare number is always
+read as a VM id, since `getent` would otherwise treat it as the address `0.0.0.<n>`.
+
+Before touching the guest it checks that ssh works, and warns when this checkout has commits that
+are not pushed or files that are not committed: the guest pulls from GitHub, so neither would
+arrive. `--push` pushes this branch first, which is the one-command version of that.
+
+The flags turn individual first-run steps back on: `--key`, `--gh` (needs `--key`), `--tailnet`,
+`--secrets`, `--agents`, `--obsidian`. `TARGET` picks the Home Manager target (default `devbox`).
+
 ## Running them separately
 
 ```sh
@@ -38,8 +70,10 @@ BOOTSTRAP=0 ./proxmox/create-devbox.sh             # VM only
 ./proxmox/bootstrap-devbox.sh --remote <guest-ip> # configure an existing guest
 ```
 
-Re-running the bootstrap is how a guest is updated: it pulls, re-applies the target, and only
-repeats steps that are already done.
+Re-running the bootstrap is also how a guest is updated, but it asks the first-run questions
+again; `update-devbox.sh` is the same path with those answers supplied. `--remote` takes anything
+ssh can reach, so a tailnet name works as well as an address; `update-devbox.sh` adds the VM id
+and the node lookup.
 
 ## Destroying a guest
 
