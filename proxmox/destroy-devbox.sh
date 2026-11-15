@@ -4,10 +4,11 @@
 #   NODE=root@pve ./proxmox/destroy-devbox.sh devbox2
 #   NODE=root@pve ./proxmox/destroy-devbox.sh 202
 #
-# The cleanup has to happen while the guest still runs, so it goes first: a
-# logout from the tailnet inside the guest, and optionally deleting the guest's
-# registered key from the GitHub account. Then the VM is destroyed with --purge,
-# which also drops it from backup jobs and replication.
+# The cleanup has to happen while the guest still runs, so it goes first: the
+# tailnet logout and the Obsidian unlink are unconditional, and deleting the
+# guest's registered key from the GitHub account is asked for and defaults to
+# no, because it touches the account rather than the guest. Then the VM is
+# destroyed with --purge, which also drops it from backup jobs and replication.
 set -euo pipefail
 
 TARGET=${1:-}
@@ -15,7 +16,8 @@ NODE=${NODE:-}
 DEFAULT_NODE=${DEFAULT_NODE:-root@pve}
 YES=${YES:-0}
 CIUSER=${CIUSER:-treethought}
-SETUP_TAILSCALE=${SETUP_TAILSCALE:-ask} # ask | 1 | 0, logout from the tailnet
+SETUP_TAILSCALE=${SETUP_TAILSCALE:-1}   # 1 | 0, logout from the tailnet
+SETUP_OBSIDIAN=${SETUP_OBSIDIAN:-1}     # 1 | 0, unlink the Obsidian vault
 SETUP_GH=${SETUP_GH:-ask}               # ask | 1 | 0, delete the key on GitHub
 
 die() { echo "error: $*" >&2; exit 1; }
@@ -46,11 +48,11 @@ ask() {
 # Resolve the id and name from either argument form.
 if [ "$TARGET" -eq "$TARGET" ] 2>/dev/null; then
   VMID=$TARGET
-  NAME=$(node "qm config $VMID" 2>/dev/null | sed -n 's/^name: //p') || true
+  NAME=$(node qm config "$VMID" 2>/dev/null | sed -n 's/^name: //p') || true
   [ -n "$NAME" ] || die "no VM with id $VMID"
 else
   NAME=$TARGET
-  VMID=$(node "qm list" | awk -v n="$NAME" '$2 == n {print $1; exit}')
+  VMID=$(node qm list | awk -v n="$NAME" '$2 == n {print $1; exit}')
   [ -n "$VMID" ] || die "no VM named $NAME"
 fi
 echo "target: $NAME ($VMID)"
@@ -61,7 +63,7 @@ ask "Destroy $NAME ($VMID) and its disks?" n || { echo "aborted"; exit 0; }
 
 # The guest address comes from the agent, the same way the create script gets
 # it. A stopped or agentless guest simply has no cleanup to do.
-GUEST_IP=$(node "qm guest cmd $VMID network-get-interfaces 2>/dev/null" |
+GUEST_IP=$(node qm guest cmd "$VMID" network-get-interfaces 2>/dev/null |
   awk -F'"' '/"ip-address" *: *"192|"ip-address" *: *"10\.|"ip-address" *: *"172\./ {print $4; exit}' || true)
 
 if [ -n "$GUEST_IP" ]; then
@@ -72,49 +74,55 @@ else
 fi
 
 if [ -n "$GUEST_IP" ] && [ "$SETUP_TAILSCALE" != "0" ]; then
-  if ask "Log this guest out of the tailnet?" n; then
-    ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" 'sudo tailscale logout' 2>/dev/null || true
+  if ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" 'sudo tailscale logout' 2>/dev/null; then
     # Logging out revokes the node key but leaves the device registered as
     # offline, and the CLI has no verb to delete it. Until it is removed in the
     # admin console, the next guest with this name is handed a -1 suffix.
     echo "logged out; remove the device in the tailnet admin console to free the name"
+  else
+    echo "could not log out of the tailnet; remove the device in the admin console" >&2
   fi
 fi
 
 # Unlinking is local to the guest, so it only matters when the disks survive this
 # run (a snapshotted or stopped VM, or a backup taken first). The device itself
 # stays in Obsidian's version history; there is no CLI to remove it.
-if [ -n "$GUEST_IP" ] && [ "${SETUP_OBSIDIAN:-ask}" != "0" ]; then
-  if ask "Unlink the Obsidian vault on this guest?" y; then
-    ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" \
-      '$HOME/.nix-profile/bin/ob sync-unlink --path $HOME/robovault' 2>/dev/null ||
-      echo "could not unlink the vault; it is removed with the disks anyway"
+if [ -n "$GUEST_IP" ] && [ "$SETUP_OBSIDIAN" != "0" ]; then
+  if ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" \
+    '$HOME/.nix-profile/bin/ob sync-unlink --path $HOME/robovault' 2>/dev/null; then
+    echo "unlinked the obsidian vault"
+  else
+    echo "could not unlink the vault; it is removed with the disks anyway" >&2
   fi
 fi
 
 if [ -n "$GUEST_IP" ] && [ "$SETUP_GH" != "0" ] && have gh; then
   pubkey=$(ssh -o BatchMode=yes "$CIUSER@$GUEST_IP" 'cat ~/.ssh/id_ed25519.pub 2>/dev/null' || true)
-  if [ -n "$pubkey" ] && ask "Delete this guest's key from GitHub?" n; then
-    # The bootstrap titles keys with the hostname, and gh's list is a table
-    # (TITLE ID KEY TYPE), so match the title and fall back to the key body.
-    body=$(printf '%s' "$pubkey" | awk '{print $2}')
-    if keys=$(gh ssh-key list 2>&1); then
-      id=$(printf '%s\n' "$keys" | awk -v t="$HOSTNAME" 'NR > 1 && $1 == t {print $2; exit}')
-      [ -n "$id" ] || id=$(printf '%s\n' "$keys" | awk -v b="$body" 'index($0, b) {print $2; exit}')
-      if [ -n "$id" ]; then
-        gh ssh-key delete "$id" --yes >/dev/null && echo "deleted key $id from GitHub"
+  if [ -n "$pubkey" ]; then
+    # The one question left, and it defaults to no, because this reaches past the
+    # guest into the GitHub account. SETUP_GH=1 answers it without asking.
+    if [ "$SETUP_GH" = "1" ] || ask "Delete this guest's key from GitHub?" n; then
+      # The bootstrap titles keys with the hostname, and gh's list is a table
+      # (TITLE ID KEY TYPE), so match the title and fall back to the key body.
+      body=$(printf '%s' "$pubkey" | awk '{print $2}')
+      if keys=$(gh ssh-key list 2>&1); then
+        id=$(printf '%s\n' "$keys" | awk -v t="$HOSTNAME" 'NR > 1 && $1 == t {print $2; exit}')
+        [ -n "$id" ] || id=$(printf '%s\n' "$keys" | awk -v b="$body" 'index($0, b) {print $2; exit}')
+        if [ -n "$id" ]; then
+          gh ssh-key delete "$id" --yes >/dev/null && echo "deleted key $id from GitHub"
+        else
+          echo "no key titled $HOSTNAME on the account"
+        fi
       else
-        echo "no key titled $HOSTNAME on the account"
+        echo "gh cannot list keys; it needs the public-key scope:"
+        echo "  gh auth refresh -s admin:public_key"
       fi
-    else
-      echo "gh cannot list keys; it needs the public-key scope:"
-      echo "  gh auth refresh -s admin:public_key"
     fi
   fi
 elif [ "$SETUP_GH" != "0" ]; then
   echo "gh not available here; delete the rotated key by hand if it was registered"
 fi
 
-node "qm stop $VMID --timeout 30 >/dev/null 2>&1 || true"
-node "qm destroy $VMID --purge"
+node qm stop "$VMID" --timeout 30 >/dev/null 2>&1 || true
+node qm destroy "$VMID" --purge
 echo "destroyed $NAME ($VMID)"

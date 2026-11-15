@@ -83,12 +83,15 @@ and the node lookup.
 ./proxmox/destroy-devbox.sh 202
 ```
 
-The cleanup runs before the VM goes away, because both steps need it alive: `tailscale logout`
-inside the guest, and deleting the guest's SSH key from GitHub. An optional `ob sync-unlink`
-disconnects the Obsidian vault, which only matters if the disks survive (a stopped VM or a backup
-taken first); the device itself stays in Obsidian's version history. `SETUP_TAILSCALE=0`,
-`SETUP_GH=0`, and `YES=1` answer the questions up front; `qm destroy --purge` also drops the VM
-from backup jobs and replication.
+The cleanup runs before the VM goes away, because it needs the guest alive: `tailscale logout` and
+`ob sync-unlink` inside the guest, then `qm destroy --purge`, which also drops the VM from backup
+jobs and replication. Both cleanup steps run without asking; `SETUP_TAILSCALE=0` and
+`SETUP_OBSIDIAN=0` skip them. Unlinking only matters if the disks survive (a stopped VM, or a backup
+taken first), and the device stays in Obsidian's version history either way.
+
+The one question is whether to delete the guest's SSH key from GitHub, which defaults to no because
+it reaches into the account rather than the guest. `SETUP_GH=1` deletes it without asking,
+`SETUP_GH=0` skips it, and `YES=1` confirms both the destroy and the key deletion.
 
 Deleting the GitHub key needs the public-key scope, which `gh auth login` does not request by
 default: `gh auth refresh -s admin:public_key`. Without it the script says so and leaves the key
