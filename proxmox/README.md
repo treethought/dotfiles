@@ -61,7 +61,8 @@ are not pushed or files that are not committed: the guest pulls from GitHub, so 
 arrive. `--push` pushes this branch first, which is the one-command version of that.
 
 The flags turn individual first-run steps back on: `--key`, `--gh` (needs `--key`), `--tailnet`,
-`--secrets`, `--agents`, `--obsidian`. `TARGET` picks the Home Manager target (default `devbox`).
+`--secrets`, `--agents`, `--repos`, `--obsidian`. `TARGET` picks the Home Manager target
+(default `devbox`).
 
 ## Running them separately
 
@@ -102,18 +103,43 @@ version), `CIUSER`, `SSHKEYS`, `BOOTSTRAP` (0 to stop after the VM).
 `bootstrap-devbox.sh`: `TARGET` (devbox), `REPO`, `DIR`, `TS_AUTHKEY` (skip the browser login),
 `SSH_KEY` (path on the machine running the script to an existing private key, also offered
 as the prompt's default; its public half is derived or copied alongside), and `SETUP_KEY`,
-`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, `SETUP_AGENTS`, `SETUP_OBSIDIAN`, each `1` or `0`
-to answer a question without asking, plus `SECRETS_FILE`, `AGENTS_DIR`, and `AGENTS_MD` to point
-at different paths.
+`SETUP_TAILSCALE`, `SETUP_GH`, `SETUP_SECRETS`, `SETUP_AGENTS`, `SETUP_REPOS`, `SETUP_OBSIDIAN`,
+each `1` or `0` to answer a question without asking, plus `SECRETS_FILE`, `AGENTS_DIR`,
+`AGENTS_MD`, `REPOS_FILE`, and `REPO_HOME` to point at different paths.
 
 The optional steps are questions: SSH private key (a path, with Tab completion when run from a
 terminal; empty generates one; `skip` for none), install Tailscale and join the tailnet
-(default yes), copy `private/secrets.zsh` to the guest (default no), register the key with
-GitHub via gh (default no). They are asked before any work starts, on whichever machine runs the
-script, and the answers are handed to the guest as variables, so `--remote` needs no terminal
-there. Without a terminal the defaults apply.
+(default yes), copy `private/secrets.zsh` to the guest (default no), clone the repositories
+listed in `private/repos.txt` (default yes, asked only when the file has entries), register the
+key with GitHub via gh (default no). They are asked before any work starts, on whichever machine
+runs the script, and the answers are handed to the guest as variables, so `--remote` needs no
+terminal there. Without a terminal the defaults apply.
 
 Subnet and gateway come from the node itself, so nothing here carries a site-specific address.
+
+## Extra repositories
+
+`private/repos.txt` is an ignored file listing repositories to clone on a guest, one
+`owner/name` per line; blank lines and `#` comments are ignored. A `dir <path>` line sets the
+directory for the lines below it, and a repository without one goes to `REPO_HOME/<name>`, which
+defaults to `~/projects`.
+
+```
+dir ~/bsky
+bluesky-social/indigo
+
+dir ~/projects
+treethought/dotfiles
+```
+
+A line may still name its own directory, which wins over the group: `owner/name ~/somewhere`.
+
+It lives in `private/` because it names private repositories, and the public repo should not
+carry that. The bootstrap copies it to the guest when it answers the question yes, and
+`update-devbox.sh --repos` clones anything missing. An existing checkout is never pulled or
+modified, and a repository that will not clone is reported without stopping the run. Cloning
+tries `gh` first, so `gh auth login` on the guest is what makes a private repository work;
+otherwise it falls back to https and ssh.
 
 ## Git over SSH from a guest
 

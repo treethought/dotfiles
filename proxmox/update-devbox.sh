@@ -4,7 +4,7 @@
 #   ./proxmox/update-devbox.sh                 # the guest named devbox
 #   ./proxmox/update-devbox.sh devbox2
 #   ./proxmox/update-devbox.sh devbox2 --agents --secrets
-#   ./proxmox/update-devbox.sh devbox2 --push
+#   ./proxmox/update-devbox.sh devbox2 --repos --push
 #
 # The guest may be named three ways: a tailnet name (MagicDNS), a LAN address,
 # or a VM id. A name that does not resolve is looked up on the node, and its
@@ -31,6 +31,7 @@ for arg in "$@"; do
     --gh) SETUP_GH=1 ;;
     --secrets) SETUP_SECRETS=1 ;;
     --agents) SETUP_AGENTS=1 ;;
+    --repos) SETUP_REPOS=1 ;;
     --obsidian) SETUP_OBSIDIAN=1 ;;
     --push) PUSH=1 ;;
     -*) die_unknown=$arg ;;
@@ -49,6 +50,7 @@ export SETUP_TAILSCALE=${SETUP_TAILSCALE:-0}
 export SETUP_GH=${SETUP_GH:-0}
 export SETUP_SECRETS=${SETUP_SECRETS:-0}
 export SETUP_AGENTS=${SETUP_AGENTS:-0}
+export SETUP_REPOS=${SETUP_REPOS:-0}
 export SETUP_OBSIDIAN=${SETUP_OBSIDIAN:-0}
 # The bootstrap skips key registration when there is no key step to register.
 [ "$SETUP_KEY" = "0" ] && [ "$SETUP_GH" = "1" ] &&

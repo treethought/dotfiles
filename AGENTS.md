@@ -10,7 +10,8 @@ This repository is public.
 
 - Secrets never go in Git: API keys, tokens, passwords, private keys, cookies, session IDs.
   Tools read them from the environment; values that have to exist live in `private/`,
-  `*.private`, or the local `handoff.md`.
+  `*.private`, or the local `handoff.md`. The same rule covers anything naming private
+  repositories, such as `private/repos.txt`.
 - Identifying details need permission before they are added: IPs, MAC addresses, host names,
   domains, tailnet names, usernames, email addresses, serials, machine IDs. That is per value
   and per file.
@@ -44,6 +45,10 @@ On the Mac, the intended target is `#mac`, but the Mac migration is not complete
 Clone the repository, recreate ignored private files for the machine, apply the relevant Home Manager target, and run `install.sh` for plain configuration links. The current primary target is `framework`; `mac` is the Mac target and `devbox` is a headless Fedora VM on the Proxmox host.
 
 The installer backs up an existing destination with a timestamp before creating a symlink. It manages tmux, Starship, Neovim, Ranger, Git, Ghostty, Zellij, Crush, and PolyToken. Home Manager, not `install.sh`, manages `~/.zshrc`.
+
+### Provisioning a guest
+
+`proxmox/README.md` covers the headless Fedora guests. `create-devbox.sh` builds one on the Proxmox node, `update-devbox.sh` re-applies the flake and relinks an existing one, `destroy-devbox.sh` removes it, and `bootstrap-devbox.sh` is the guest-side script the first two run. `private/repos.txt` lists repositories to clone on a guest, one `owner/name` per line, with a `dir <path>` line setting the directory for the lines below it.
 
 ### Fedora system prerequisites
 

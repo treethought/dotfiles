@@ -232,9 +232,17 @@ before it starts.
 
 The optional steps are questions, asked before any work starts on whichever machine runs the
 script: SSH private key (a path, with Tab completion; empty to generate one; `skip` for none), install Tailscale and
-join the tailnet (default yes),
-register the key with gh (default no). The answers are handed to the guest as variables, so `--remote` needs no terminal there,
-and `bash -s < script` applies the defaults.
+join the tailnet (default yes), clone the repositories listed in `private/repos.txt` (default yes,
+asked only when that file has entries), register the key with gh (default no). The answers are
+handed to the guest as variables, so `--remote` needs no terminal there, and `bash -s < script`
+applies the defaults.
+
+`private/repos.txt` is an ignored file of `owner/name` lines for the repositories that belong on a
+guest. A `dir <path>` line sets the directory for the lines below it, and a repository without one
+goes to `REPO_HOME/<name>`, which defaults to `~/projects`. It is ignored because
+it names private repositories, and it is an explicit list rather than a dump of the account so a
+guest gets the projects it needs and not every fork. Existing checkouts are left alone: the step
+only clones what is missing.
 
 Fedora needs `git` and `curl` first (`sudo dnf install -y git curl`); the script checks and
 stops with that message. It uses the Determinate Nix installer because the upstream one aborts

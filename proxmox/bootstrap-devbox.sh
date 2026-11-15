@@ -32,9 +32,13 @@ SETUP_GH=${SETUP_GH:-ask}            # ask | 1 | 0
 SETUP_SECRETS=${SETUP_SECRETS:-ask}  # ask | 1 | 0, copy private/secrets.zsh over
 SETUP_OBSIDIAN=${SETUP_OBSIDIAN:-ask}  # ask | 1 | 0, log in and start Obsidian Sync
 SETUP_AGENTS=${SETUP_AGENTS:-ask}    # ask | 1 | 0, copy the agent directory over
+SETUP_REPOS=${SETUP_REPOS:-ask}      # ask | 1 | 0, clone the repositories listed below
 AGENTS_DIR=${AGENTS_DIR:-$HOME/.agents}  # source, on the machine running this
 AGENTS_MD=${AGENTS_MD:-$HOME/AGENTS.md}   # global agent guidance
 SECRETS_FILE=${SECRETS_FILE:-private/secrets.zsh}  # path inside the repo
+REPOS_FILE=${REPOS_FILE:-private/repos.txt}  # one "owner/name [dir]" per line
+REPO_HOME_DEFAULT=$HOME/projects     # where a line without a directory is cloned
+REPO_HOME=${REPO_HOME:-$REPO_HOME_DEFAULT}
 
 die() { echo "error: $*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -82,6 +86,14 @@ ask_text() {
   read_line "$prompt" "$default"
 }
 
+# Where a path named relative to the repo lives on the machine running this.
+local_path() {
+  case $1 in
+    /*) printf '%s' "$1" ;;
+    *) printf '%s/%s' "$(dirname "$0")/.." "$1" ;;
+  esac
+}
+
 # SSH_KEY answers this too: it is the default at the prompt, so pressing enter
 # keeps it, and without a terminal it is used directly.
 if [ "$SETUP_KEY" = "ask" ]; then
@@ -116,6 +128,17 @@ fi
 if [ "$SETUP_AGENTS" = "ask" ]; then
   if ask "Copy the agent directory and AGENTS.md to the guest?" y; then SETUP_AGENTS=1; else SETUP_AGENTS=0; fi
 fi
+# Only worth asking when there is a list to clone, so the question is skipped
+# rather than answered for a file that does not exist.
+if [ "$SETUP_REPOS" = "ask" ]; then
+  count=$(grep -cvE '^[[:space:]]*(#|$)' "$(local_path "$REPOS_FILE")" 2>/dev/null || true)
+  if [ "${count:-0}" -gt 0 ] &&
+    ask "Clone the ${count} repositories listed in $REPOS_FILE?" y; then
+    SETUP_REPOS=1
+  else
+    SETUP_REPOS=0
+  fi
+fi
 if [ "$SETUP_OBSIDIAN" = "ask" ]; then
   if ask "Set up Obsidian Sync on this guest (needs the secrets above)?" n; then
     SETUP_OBSIDIAN=1
@@ -132,7 +155,7 @@ fi
 
 # Say what was decided, so a default taken by pressing enter is visible.
 onoff() { [ "$1" = "1" ] && echo yes || echo no; }
-echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), agents $(onoff "$SETUP_AGENTS"), obsidian $(onoff "$SETUP_OBSIDIAN"), gh key $(onoff "$SETUP_GH")"
+echo "decisions: ssh key $(onoff "$SETUP_KEY"), tailnet $(onoff "$SETUP_TAILSCALE"), secrets $(onoff "$SETUP_SECRETS"), agents $(onoff "$SETUP_AGENTS"), repos $(onoff "$SETUP_REPOS"), obsidian $(onoff "$SETUP_OBSIDIAN"), gh key $(onoff "$SETUP_GH")"
 
 # --remote streams this file to the guest instead of running it here. Answers
 # already collected are passed as variables, so the guest side never prompts.
@@ -141,7 +164,13 @@ if [ -n "$REMOTE" ]; then
 
   forward="SETUP_KEY=$SETUP_KEY SETUP_TAILSCALE=$SETUP_TAILSCALE SETUP_GH=$SETUP_GH"
   forward="$forward SETUP_SECRETS=$SETUP_SECRETS SETUP_OBSIDIAN=$SETUP_OBSIDIAN"
+  forward="$forward SETUP_AGENTS=$SETUP_AGENTS SETUP_REPOS=$SETUP_REPOS"
   if [ -n "$TS_AUTHKEY" ]; then forward="$forward TS_AUTHKEY='$TS_AUTHKEY'"; fi
+  # Only an explicit override travels; the default is this machine's home, which
+  # is not what the guest's home necessarily is.
+  if [ -n "${REPO_HOME:-}" ] && [ "$REPO_HOME" != "$REPO_HOME_DEFAULT" ]; then
+    forward="$forward REPO_HOME='$REPO_HOME'"
+  fi
 
   # A key can only be read where this runs, so copy it over and point the guest
   # at the copy, then remove it once the run ends.
@@ -166,9 +195,21 @@ if [ -n "$REMOTE" ]; then
     fi
   fi
 
+  # The repository list is read on the guest during the same window, so it
+  # travels the same way. It is a list of names, not a credential, but it names
+  # private repositories and stays out of git all the same.
+  repos_copy=
+  repos_src=$(local_path "$REPOS_FILE")
+  if [ "$SETUP_REPOS" = "1" ] && [ -r "$repos_src" ]; then
+    repos_copy="/tmp/bootstrap-repos.$$"
+    scp -q "$repos_src" "$REMOTE:$repos_copy"
+    forward="$forward REPOS_FILE=$repos_copy"
+  fi
+
   ssh "$REMOTE" "$forward bash -s" <"$0"
   if [ -n "$key_copy" ]; then ssh "$REMOTE" "rm -f $key_copy $key_copy.pub"; fi
   if [ -n "$secrets_copy" ]; then ssh "$REMOTE" "rm -f $secrets_copy"; fi
+  if [ -n "$repos_copy" ]; then ssh "$REMOTE" "rm -f $repos_copy"; fi
 
   # The clone exists by now, so there is somewhere to put the file.
   if [ "$SETUP_SECRETS" = "1" ]; then
@@ -181,6 +222,12 @@ if [ -n "$REMOTE" ]; then
     else
       echo "no $src to copy" >&2
     fi
+  fi
+  # Keep the list on the guest, so a later run does not have to send it again.
+  if [ -n "$repos_copy" ]; then
+    ssh "$REMOTE" 'mkdir -p ~/dotfiles/private'
+    scp -q "$repos_src" "$REMOTE:dotfiles/private/$(basename "$REPOS_FILE")"
+    echo "copied $REPOS_FILE to the guest"
   fi
   # Agents read these at runtime, so copying after the guest is set up keeps the
   # transfer off the critical path.
@@ -449,12 +496,64 @@ setup_obsidian() {
   echo "obsidian sync configured for $OBSIDIAN_VAULT at $vault_path"
 }
 
+# Repositories beyond this one, listed as "owner/name [dir]" in REPOS_FILE, where
+# a "dir <path>" line sets the directory for the lines below it. Only a missing
+# clone is acted on: an existing checkout is left alone, because pulling work
+# repositories on every provision is not what an update means. One repository
+# that will not clone is reported and does not stop the run.
+clone_repos() {
+  local list repo dir target current= cloned=0 present=0 failed=0
+  case $REPOS_FILE in
+    /*) list=$REPOS_FILE ;;
+    *) list="$DIR/$REPOS_FILE" ;;
+  esac
+  [ -r "$list" ] || {
+    echo "no $REPOS_FILE; skipping extra repositories" >&2
+    return 0
+  }
+  while read -r repo dir _; do
+    repo=${repo%%#*}
+    repo=${repo//[[:space:]]/}
+    [ -n "$repo" ] || continue
+    # A bare "dir" line is a directive, so the four repositories that belong
+    # together say where they go once instead of on every line.
+    if [ "$repo" = "dir" ]; then
+      current=${dir:-}
+      continue
+    fi
+    target=${dir:-${current:-$REPO_HOME}}
+    case $target in
+      "~"*) target="$HOME${target#\~}" ;;
+      /*) ;;
+      *) target="$HOME/$target" ;;
+    esac
+    [ -n "${dir:-}" ] || target="$target/$(basename "$repo")"
+    if [ -d "$target/.git" ]; then
+      present=$((present + 1))
+      continue
+    fi
+    mkdir -p "$(dirname "$target")"
+    # gh first, because it already carries credentials for a private repository;
+    # otherwise try https and then ssh, whichever the guest happens to have.
+    if have gh && gh auth status >/dev/null 2>&1 && gh repo clone "$repo" "$target" >/dev/null 2>&1 ||
+      git clone --quiet "https://github.com/$repo.git" "$target" >/dev/null 2>&1 ||
+      git clone --quiet "git@github.com:$repo.git" "$target" >/dev/null 2>&1; then
+      cloned=$((cloned + 1))
+    else
+      echo "could not clone $repo; check access, then: gh repo clone $repo $target" >&2
+      failed=$((failed + 1))
+    fi
+  done <"$list"
+  echo "repositories: $cloned cloned, $present already present, $failed failed"
+}
+
 if [ "$SETUP_KEY" = "1" ]; then
   prepare_ssh
   setup_ssh_key
 fi
 [ "$SETUP_TAILSCALE" = "1" ] && join_tailnet
 [ "$SETUP_GH" = "1" ] && register_git_key
+[ "$SETUP_REPOS" = "1" ] && clone_repos
 [ "$SETUP_OBSIDIAN" = "1" ] && setup_obsidian
 
 case $SECRETS_FILE in
