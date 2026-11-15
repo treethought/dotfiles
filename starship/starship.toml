@@ -63,6 +63,12 @@ format = '[$user ]($style)'
 #vimcmd_visual_symbol = "▼"
 
 
+[hostname]
+# The default format for some versions appends " in ", which is where the prompt
+# text came from; state it explicitly instead.
+format = '[$ssh_symbol$hostname]($style) '
+
+
 [directory]
 format = "[ $path/ ]($style)"
 #style = "white"
